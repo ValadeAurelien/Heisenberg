@@ -1,0 +1,9 @@
+build/
+rapport.aux
+rapport.bbl
+rapport.bib
+rapport.blg
+rapport.log
+rapport.out
+rapport.synctex.gz
+log*

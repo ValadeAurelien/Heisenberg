@@ -1,0 +1,324 @@
+\documentclass[a4paper, openany, 11pt]{article}
+
+%%% PACKAGES %%%
+\usepackage[left=2cm, right=2cm, top=2.5cm, bottom=2.5cm]{geometry}
+\usepackage[french]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage[cal=boondox]{mathalfa}
+\usepackage{bm}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{textcomp}
+\usepackage{nccmath}
+\usepackage{algorithmicx}
+\usepackage{algpseudocode}
+%\renewcommand{\theequation}{\thesubsection\arabic{equation}}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{graphicx}
+%\makeatletter
+%\graphicspath{{./Images/}}
+%\def\input@path{{./Images/}}
+%%\def\input@path{{Images_light/}}
+%\makeatother
+\usepackage{tikz}
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks,
+    linkcolor={red!50!black},
+    citecolor={blue!50!black},
+    urlcolor={blue!80!black}
+}
+  
+\usepackage{multirow}
+\usepackage{multicol}
+
+\newcommand{\vr}{\bm{r}}
+\newcommand{\kb}{\mathcal{k}_B}
+
+\title{Simulation du modèle XY par méthode Monté-Carlo \medskip \\ 
+       \Large Rapport de projet pour le cours de Computationnal Statistical Physics }
+\author{Aurélien Valade}
+\date{}
+
+\begin{document}
+\maketitle
+
+{\centering \rule{\textwidth}{.5pt} }
+
+\section*{Introduction}
+
+La physique statistique est l'étude des comportements systèmes macroscopiques composés de systèmes
+microscopiques dont les propriétés sont connues. On va donc systématiquement s'intéresser à un grand
+nombre de particules en interactions, ce qui est complexe à représenter mathématiquement sans faire
+approximation de continuité, de champ moyen, etc. Ainsi, les comportements de nombreux modèles de
+physique statistique ne sont pas discriptibles analytiquement pour des cas pourtant pertinents.  Si
+une résolution analytique n'est pas possible, il faut travailler avec des valeurs numériques, comme
+cela a par exemple était fait pendant la seconde guerre mondiale pour les calculs portant sur la
+bombe atomique, ou encore en astrophysique pour des calculs de trajectoires.  Cependant la quantité
+de calcul nécessaire pour résoudre des systèmes réalistes est tout bonnement inhumaine.
+
+L'informatique nous offre une capacité de calcul immensément plus grande que celle des calculatrices
+humaines, puisqu'on passe d'une dizaine d'opérations par minute à des milliards par seconde. Mais ce
+n'est toujours pas suffisant pour attaquer le problème de front, par exemple, calculer directement
+la fonction de partition du système reste souvent hors de portée. Il nous faut donc trouver des
+méthodes plus puissantes pour résoudre le système. Cette formalisation à cependant un prix puisque
+de telles méthodes sont alors plus spécifiques : une méthode de résolution est adaptée à une
+certaine question, mais ne permet pas toujours de bien répondre à d'autres. On pourra ainsi
+rapidement calculer des propriétés d'un système à l'équilibre sans pouvoir décrire la dynamique
+physique de la relaxation. Réciproquement, une autre méthode peut permettre de décrire la dynamique
+du système avec précision, mais demande une très grande quantité de calcul pour atteindre l'état
+d'équilibre. 
+
+Nous allons ici nous pencher sur l'étude du modèle XY, qui est un modèle d'interaction sur réseau se
+rapprochant du modèle d'Ising, à la différence que les états pris par les spins sont continus entre
+-1 et +1 et non restreints aux valeurs $\{-1, +1\}$. Il serait cependant faux de dire que le modèle
+XY est une généralisation du modèle d'Ising puisque pour un système équivalent, aucun choix de
+paramètres du modèle XY ne permet de reproduire des comportements semblables à ceux conjecturés par
+modèle d'Ising. Le modèle XY est donc adapté à d'autres systèmes que le modèle d'Ising : il permet
+notamment de décrire des systèmes dont le paramètre d'ordre ne correspond pas à une brisure de
+symétrie spatiale lors de la transition de phase, mais plutôt à une brisure de la symétrie interne,
+comme c'est par exemple le cas pour  l'Helium II supercritique ou encore les cristaux liquides
+hexatiques\footnote{La phase hexatique est une phase située entre les phases solide isotropique et
+liquide isotropique dans les systèmes de particules à deux dimensions (cristal liquide
+bidimensionnel). Il est caractérisés par deux paramètres d'ordre : un ordre moléculaire de
+positionnement à courte portée et un ordre orientationnel à longue portée
+\cite{wiki:phase_hexatique}.}.
+
+Nous allons dans un premier temps présenter le problème dans sa formulation physique.
+ 
+\section{Modèle physique}
+
+\subsection{Description du modèle}
+
+Soit un ensemble de particules arrangées sur une grille carrée de taille $N\times N$. On note la
+position $\vr{ij}$ pour la particule de la ligne $0 \le i < N$ et la colonne $0 \le j < N$. On
+utilise aussi l'indiciation des particules $0 \le I < N\times N$ où la position spiatiale n'apparaît
+pas explicitement bien qu'on puisse définir $I = i\times N +j$.
+
+Ces particules ont une propriété appelée spin que l'on peut lier à l'angle entre la normale au plan
+et un axe intrinsèque à la particule. On note cet angle $\theta_{ij} \in [0, \pi]$. On peut alors
+définir le spin de chaque particule $\sigma_{ij} = \cos(\theta_{ij})$. On considère que ces
+particules interagissent entre elles à travers leur spin, et qu'il existe un champ exterieur avec
+lequel ces spin tendent à s'aligner. Le Hamilonien décrivant l'énergie d'un tel système s'écrit
+alors : 
+\begin{equation}
+    \begin{aligned}  
+        H &= - k \underbrace{\sum_{I, I'} J_{II'} \cos(\theta_I-\theta_{I'})}_{\text{interactions}} 
+        - h \underbrace{\sum_I \cos(\theta_I) }_{\text{champ exterieur}} \\
+          &= -k Q - h M \\
+    \end{aligned}
+\end{equation}
+avec
+\begin{equation}
+    Q = \sum_{I, I'} J_{II'} \cos(\theta_I-\theta_{I'})~, \qquad M = \sum_I \cos(\theta_I) 
+\end{equation}
+nommées respectivement le couplage et la magnétisation par analogie aux systèmes magnétiques.
+
+La forme de la matrice $J$ est centrale au problème. Le modèle XY préconise de prendre une fonction
+de la distance entre les deux particules : $J_{II'} = (\vr_I - \vr_{I'})^{-\alpha}$. On peut ensuite
+choisir de n'appliquer cette définition qu'aux $n$ plus proches voisins et de négliger les
+interactions à longue distance : 
+\begin{equation}
+    J_{II'} = 
+    \begin{cases}
+        (\vr_I - \vr_{I'})^{-\alpha} & \text{si~} |i-i'|<n \text{~et~} |j-j'|<n, \\
+        0 & \text{sinon.}
+    \end{cases}
+\end{equation}
+
+Les paramètres $h$ et $k$ vont nous permettre permettent d'adapter ce système à différents cas
+concrets. La valeur de $h$ représente l'intensité du champ externe auquel les spins tendent à
+s'aligner, et $k$ modélise la force du couplage entre les spins. Pour un modèle magnétique, $k>0$
+signifie que le matériau est ferromagnétique : les spins cherchent à pointer dans la même direction
+et $k>0$ représente un matériau paramagnétique : les spins cherchent à pointer dans une direction
+opposée à celle de leurs voisins. Ces quantités ont été préalablement adimensionnées, et dérivent de
+termes de la forme $h=h'/(\kb T)$, $k = k'/(\kb T)$ où $\kb$ est la constante de Boltzmann et $T$ la
+température. C'est donc à travers ces paramètres qu'on peut jouer sur la température pour observer
+les transitions de phase, etc. 
+
+\subsection{Comportement prédit}
+
+A haute température les paramètres $h$ et $k$ du système sont très faibles, le Hamiltonien résultant
+est donc quasi-nul et n'a pas de minimum significatif. Il n'y a pas d'état qui puisse réellement
+minimiser l'énergie, tous sont donc équiprobaux, il en résulte que la magnétisation ainsi que le
+couplage sont nuls en moyenne.
+
+À basse température, le comportement du modèle XY est différent du modèle d'Ising. Tout d'abord, lors
+de la transition de phase, on n'observe pas de brisure de symétrie spatiale. A champs magnétique
+externe nul $h=0$, lors d'une trempe (\emph{i.e.} lors qu'on abaisse progressivement la température du
+système), la magnétisation reste nulle. En revanche, en présence d'un champ externe, la symmétrie du
+système étant déjà brisée, et les spins s'alignent effectivement avec ce champ. 
+
+On observe à la transition de phase un changement globale de comportement de la fonction de corrélation
+\begin{equation}
+    C_{II'} = \big|\big< \sigma_I \sigma_{I'} \big>\big|.
+\end{equation}
+
+En effet, à haute température, la fonction de corrélation décroît exponentiellement :
+\begin{equation}
+    C_{II'}^{HT} \propto e^{\Gamma(\beta) |\vr_I - \vr_{I'}|}
+\end{equation}
+alors qu'à basse température, on s'attend à trouver une fonction qui décroît moins vite que 
+\begin{equation}
+    C_{II'}^{BT} \propto \frac{\Gamma(\beta)}{1+|\vr_I - \vr_{I'}|}.
+\end{equation}
+
+
+
+\section{Implémentation}
+
+Le but de ce travail est de fournir un programme puissant, flexible, et aisément utilisable qui
+permette de simuler et d'analyser un modèle XY classique par une méthode Monté-Carlo. Il doit
+notamment utiliser un système de production, de stockage et d'analyse des données cohérent qui
+permette de reproduire chaque experience. Il faut donc notamment ne pas écraser les données au fur
+et à mesure qu'elles sont produite, mais il faut en plus garder des traces des paramètres associés à
+chaque experience produite, ainsi que des conventions de nomages compréhensibles et cohérentes.
+
+\subsection{Structure du code et des scipts}
+
+Le code produit se décompose en deux parties distinctes :
+\begin{itemize}
+    \item le code principal d'environs 500 lignes, écrit en C  : il produit les données pour une expérience
+        et les stocke dans un dossier ;
+    \item et un code de scirpting écrit en Python d'environs 600 lignes : celui ci permet d'appeler le code C avec
+        les bons paramètres puis d'exploiter les données qui en résultent.
+\end{itemize}
+
+\subsection{Fonctionnement du code principal}
+
+\subsubsection{Entrés et sorties}
+
+Chaque expérience est lancée avec la connaissance des paramêtres suivant :
+\begin{itemize}
+    \item $N$ la taille de grille ;
+    \item $n$ le nombre de plus proches voisins à considérer pour les intéractions ;
+    \item $a$ l'exposant de la fonction de décroissance pour les intéractions ;
+    \item $h$ la force du champ exterieur ;
+    \item $k$ la force de couplage entre spins ;
+    \item le type d'initialisation :
+        \begin{itemize}
+            \item \texttt{UP} : $\theta_{I}=0$ pour tout $I$ ;
+            \item \texttt{DOWN} : $\theta_{I}=\pi$ pour tout $I$ ;
+            \item \texttt{CHECKERBOARD} : $\theta_{ij}=\pi |\mathrm{mod}(i,2)-\mathrm{mod}(j, 2)|$ pour tout $i, j$ ;
+            \item \texttt{RANDOM} : $\theta_{I}= U([0, \pi])$ pour tout $I$ avec $U$ la loi
+                uniforme. 
+        \end{itemize}
+    \item le type de Monte-Carlo : \texttt{METROPOLIS}  ou \texttt{GLAUBER}.
+    \item Ainsi que le nombre de pas, la fréquence de sauvegarde des différentes données et le
+        répertoire où les stocker.
+\end{itemize}
+En sortie, le programme fournit les données suivantes :
+\begin{itemize}
+    \item Un fichier où sont stockées les valeurs des quantités $M$, $Q$ et $E$ toutes les
+        \texttt{n\_sca} itérations ; 
+    \item Un fichier toutes les \texttt{n\_lat} itérations, représentant l'ensemble des angles de la
+        grille ; 
+    \item Un fichier toutes les \texttt{n\_lat} itérations, représentant l'ensemble des interactions
+        $Q_I$ de la grille.
+\end{itemize}
+
+\subsubsection{Definition des quantités numériques}
+
+Les quantités physiques introduites prédemment sont définies numériquement comme suit :
+\paragraph{Magnétisation.}
+La définition de la magnétisation est similaire à sa définition physique : 
+\[
+M = \sum_I \cos(\theta_I).
+\] On a donc $M \in [-N\times N, N \times N]$.
+\paragraph{Couplage.}
+On introduit la matrice de couplage normalisée telle que
+\begin{equation*}
+    \hat{J}_{II'} = \frac{J_{II'}}{\sum_{KK'} J_{KK'} }.
+\end{equation*}
+Cette définition permet de garder un couplage indépendant du nombre de voisins considérés.  En
+effet, en absence de normalisation, pour une configuration donnée, l'énergie de couplage de chaque
+particule grandit fortement avec le nombre de plus proches voisins considérés, ce qui peut s'avérer
+gênant pour comparer des simulations à $n$ différent.  On introduit ensuite le couplage local 
+\begin{equation*}
+    Q_I = \sum_{I'} \hat{J}_{II'} ( \cos \theta_I \cos \theta_{I'}  -
+    \sin \theta_I \sin \theta_{I'} )
+\end{equation*}
+tel que $Q = \sum_I Q_I$, et dont les valeurs qui sont stockées sur la grille des interactions
+introduite plus haut. Développer le cosinus en une différence de produits de cosinus/sinus permet de
+stocker les valeurs de cosinus et de sinus pour chaque angle et de calculer un minimum de fonctions
+trigonométriques à chaque mise à jour. Avec la normalisation de la matrice de couplage, on a aussi
+$Q \in [-N\times N, N \times N]$.
+\paragraph{Énergie.} On définie l'énergie du système 
+\begin{equation*}
+    E = -k Q - h M.
+\end{equation*}
+
+\paragraph{Quantitées réduites.} Pour pouvoir comparer des experiences dont la taille de la grille
+diffère, on utilise les valeurs réduites :
+\begin{equation*}
+    m = M / N^2, \quad q = Q / N^2, \quad e = E / N^2.
+\end{equation*}
+Ces valeurs sont particulièrement stables puisqu'on a $m,q \in [-1, 1]$ et $e \in [-|h|-|k|,
+|h|+|k|]$ pour toute expérience, quelque soient ses paramètres. 
+
+
+\subsubsection{Algorithmes utilisés}
+
+Après initialisation des différentes parties du code, on procède à l'exploration de l'espace des
+phases par méthode de Monté-Carlo. Chaque pas suit la procédure décrite en figure \ref{fig:update}.
+\begin{figure}[h]
+    \begin{algorithmic}
+        \State $i \gets  $ int\_uniform\_random(0, $N-1$)
+        \Comment{ligne à modifier}
+        \State $j \gets  $ int\_uniform\_random(0, $N-1$)
+        \Comment{colonne à modifier}
+        \State $a \gets  $ uniform\_random(0, $\pi$)
+        \Comment{nouvel angle}
+        \State $p \gets  $ uniform\_random(0, 1)
+        \Comment{probabilité d'acceptation} \medskip
+        \State $b \gets  $ get\_lattice\_value(lattice, $i$, $j$)
+        \Comment{sauvegarde de l'angle}
+        \State $E \gets  $ get\_energy(lattice)
+        \Comment{sauvegarde de l'énergie} \medskip
+        \State set\_lattice\_value(lattice, $i$, $j$, $a$)
+        \Comment{assignation du nouvel angle}
+        \State compute\_energy(lattice)
+        \Comment{calcul de l'énergie dans la nouvelle configuration}
+        \State $\Delta E \gets $ get\_energy(lattice) $ - E$ \medskip
+        \If {monte\_carlo=\texttt{METROPOLIS}}
+            \If {$\exp(-\Delta E) < p$} 
+            \Comment{si le pas est rejeté}
+                \State set\_lattice\_value(lattice, $i$, $j$, $b$)
+                \Comment{réassignation de l'ancienne valeur d'angle}
+                \State set\_energy(lattice, $E$)
+                \Comment{réassignation de l'ancienne valeur d'énergie}
+            \EndIf
+        \ElsIf {monte\_carlo=\texttt{GLAUBER}}
+            \If {$1/(1+\exp(\Delta E)) < p$} 
+            \Comment{si le pas est rejeté}
+                \State set\_lattice\_value(lattice, $i$, $j$, $b$)
+                \Comment{réassignation de l'ancienne valeur d'angle}
+                \State set\_energy(lattice, $E$)
+                \Comment{réassignation de l'ancienne valeur d'énergie}
+            \EndIf
+        \EndIf
+    \end{algorithmic}
+
+    \caption{Procédure de mise à jour de la grille en pseudo code.}
+    \label{fig:update}
+\end{figure}
+
+Une fois le spin d'une particule mis à jour, il faut mettre à jour toutes les quantitées. Deux
+méthodes peuvent alors être utilisées pour calculer la nouvelle valeur de $Q$.
+\begin{itemize}
+    \item Une méthode qui met à jour les couplages locals pour toutes les particules influencées par
+        le changement introduit. La grille d'interactions produite est donc juste.
+    \item Une seconde méthode qui ne met à jour que la valeur de couplage local modifiée. La mise à
+        jour de $Q$ se fait alors :
+        \begin{equation*}
+            Q \leftarrow Q - Q_I^{\text{old}} + Q_I^{\text{new}} 
+        \end{equation*}<++>
+\end{itemize}
+
+\bibliographystyle{alpha}
+\bibliography{rapport}
+
+\end{document}
+

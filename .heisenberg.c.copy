@@ -1,0 +1,313 @@
+#include <math.h>
+#include <stdio.h>
+#include <time.h>
+#include <string.h>
+#include <stdlib.h>
+#define PI 3.141592653
+#define ABS(x)  ( x>0 ? x : -x )
+
+
+/* 
+ * DISTMAT
+ */
+
+typedef struct {
+    int N;
+    int a;
+    float *distmat;
+} distmat;
+
+float get_dist(distmat *d, int i, int j, int k, int l) {
+    return d->distmat[ ABS(i-k)*d->N+ABS(j-l) ];
+}
+
+int init_distmat(distmat *d, int N, float a) {
+    if ( N == 0 ) {
+        printf("init distmat : N is null");
+        return 1;
+    }
+    d->N = N;
+    d->a = a;
+    d->distmat = (float*) malloc(sizeof(float)*d->N*d->N);
+    for(int i=1; i<d->N; ++i) 
+        for(int j=1; j<d->N; ++j)
+            d->distmat[i*d->N+j] = pow((float) i*i+j*j, -d->a/2);
+    d->distmat[0] = 0;
+    return 0;
+}
+
+/*
+ * LATTICE
+ */
+
+typedef enum {NONE=0, RANDOM=1, UP=2, DOWN=3, CHECKERBOARD=4} init_type;
+
+typedef struct {
+    int N, B;
+    float k, h;
+    float *lattice, 
+          *latcos,
+          *latsin,
+          *latinter;
+    float Q, M, E;
+} lattice;
+
+
+void set_lat(lattice *l, int i, int j, float val) {
+    l->lattice[i*l->N+j] = val;
+}
+
+float get_lat(lattice *l, int i, int j) {
+    return l->lattice[i*l->N+j];
+}
+
+void set_cos(lattice *l, int i, int j, float val) {
+    l->latcos[i*l->N+j] = val;
+}
+
+float get_cos(lattice *l, int i, int j) {
+    return l->latcos[i*l->N+j];
+}
+
+void set_sin(lattice *l, int i, int j, float val) {
+    l->latsin[i*l->N+j] = val;
+}
+
+float get_sin(lattice *l, int i, int j) {
+    return l->latsin[i*l->N+j];
+}
+
+void set_inter(lattice *l, int i, int j, float val) {
+    l->latinter[i*l->N+j] = val;
+}
+
+void add_inter(lattice *l, int i, int j, float val) {
+    l->latinter[i*l->N+j] += val;
+} 
+
+float get_inter(lattice *l, int i, int j) {
+    return l->latinter[i*l->N+j];
+}
+
+
+void calc_cossin(lattice *l) {
+    for(int i=0; i<l->N; i=i+2) 
+        for(int j=1; j<l->N; j=j+2) {
+            set_cos(l, i, j, cos(get_lat(l, i, j)));
+            set_sin(l, i, j, sin(get_lat(l, i, j)));
+        }
+}
+
+int init_lattice(lattice *l, int N, float h, float k, int B, init_type it) {
+    if ( N == 0 ) {
+        printf("init lattice : N is null");
+        return 1;
+    }
+    l->N = N;
+    l->h = h;
+    l->k = k;
+    l->B = B;
+    l->lattice  = (float*) malloc(sizeof(float)*l->N*l->N);
+    l->latcos   = (float*) malloc(sizeof(float)*l->N*l->N);
+    l->latsin   = (float*) malloc(sizeof(float)*l->N*l->N);
+    l->latinter = (float*) malloc(sizeof(float)*l->N*l->N);
+    l->Q = 0; l->M = 0; l->E = 0;
+    if (l->lattice == NULL || 
+            l->latcos == NULL ||
+            l->latsin == NULL ||
+            l->latinter == NULL) {
+        printf("init lattice : cannot allocate memory");
+        return 1;
+    }
+    switch (it) {
+        case NONE:
+            break;
+        case RANDOM:
+            for(int i=0; i<l->N; ++i) 
+                for(int j=0; j<l->N; ++j) 
+                    set_lat(l, i, j, rand()*PI/RAND_MAX);
+            break;
+        case UP:
+            for(int i=0; i<l->N; ++i) 
+                for(int j=0; j<l->N; ++j) 
+                    set_lat(l, i, j, 0);
+            break;
+        case DOWN:
+            for(int i=0; i<l->N; ++i) 
+                for(int j=0; j<l->N; ++j) 
+                    set_lat(l, i, j, PI);
+            break;
+        case CHECKERBOARD:
+            for(int i=0; i<l->N; i=i+2) 
+                for(int j=0; j<l->N; j=j+2) 
+                    set_lat(l, i, j, PI);
+            for(int i=1; i<l->N; i=i+2) 
+                for(int j=1; j<l->N; j=j+2) 
+                    set_lat(l, i, j, PI);
+            for(int i=1; i<l->N; i=i+2) 
+                for(int j=0; j<l->N; j=j+2) 
+                    set_lat(l, i, j, 0);
+            for(int i=0; i<l->N; i=i+2) 
+                for(int j=1; j<l->N; j=j+2) 
+                    set_lat(l, i, j, 0);
+            break;
+    }
+
+    return 0;
+}
+
+void calc_inter_one_spin(lattice *l, distmat *d, int i, int j) {
+    set_inter(l, i, j, 0);
+    for(int ii=i-l->B; ii<i+l->B+1; ++ii) 
+        for(int jj=j-l->B; jj<j+l->B+1; ++jj) 
+            if (ii != i && jj != j) {
+                add_inter(l, i, j, get_dist(d, i, j, ii, jj) *
+                        ( get_cos(l, i, j)*get_cos(l, ii%l->N, jj%l->N) +
+                          get_sin(l, i, j)*get_sin(l, ii%l->N, jj%l->N) ) );
+                }
+}
+
+void calc_inters(lattice *l, distmat *d) {
+    for(int i=0; i<l->N; ++i) 
+        for(int j=0; j<l->N; ++j) 
+            calc_inter_one_spin(l, d, i, j);
+}
+
+void calc_Q(lattice *l) {
+    l->Q = 0;
+    for(int i=0; i<l->N; ++i) 
+        for(int j=0; j<l->N; ++j) {
+            //printf("%u %u %f\n", i, j, get_inter(l, i, j));
+            l->Q += get_inter(l, i, j);
+        }
+}
+
+void calc_M(lattice *l) {
+    l->M = 0;
+    for(int i=0; i<l->N; ++i) 
+        for(int j=0; j<l->N; ++j) 
+            l->M += get_cos(l, i, j);
+}
+
+void calc_E(lattice *l) {
+    l->E = -( l->k*l->Q + l->h*l->M );
+}
+
+void calc_all(lattice *l, distmat *d) {
+    calc_cossin(l);
+    calc_inters(l, d);
+    calc_Q(l);
+    calc_M(l);
+    calc_E(l);
+}
+
+void copy_lat(lattice *l_dest, lattice *l_src) {
+    fflush(stdout);
+    memcpy(l_dest->lattice, l_src->lattice, sizeof(float)*l_dest->N*l_dest->N);
+}
+
+void print_lat(lattice *l, int n) {
+    for(int i=0; i<l->N; ++i) {
+        printf("\n");
+        for(int j=0; j<l->N; ++j) 
+            printf("%03u %03u %03u %.5f\n", n, i, j, get_lat(l, i, j));
+    }
+}
+
+/*
+ * HEISENBERG
+ */
+
+typedef enum {METROPOLIS=1, GLAUBER=2} MC_type;
+
+typedef struct {
+    lattice *new_l,
+            *old_l;
+    distmat *d;
+    int mct;
+} heisenberg;
+
+int init_heisenberg(heisenberg *he, 
+        int N, float h, float k, int B, int a, 
+        init_type it, int mct) {
+    he->new_l = (lattice*) malloc(sizeof(lattice));
+    he->old_l = (lattice*) malloc(sizeof(lattice));
+    he->d     = (distmat*) malloc(sizeof(distmat));
+    if (he->old_l == NULL || he->new_l == NULL || he->d == NULL) {
+        printf("init heisenberg, could not alloc memory");
+        return 1;
+    }
+    if (init_lattice(he->old_l, N, h, k, B, it)) return 1;
+    if (init_lattice(he->new_l, N, h, k, B, NONE)) return 1;
+    if (init_distmat(he->d, N, a)) return 1; 
+    copy_lat(he->new_l, he->old_l);
+    he->mct = mct;
+    calc_all(he->old_l, he->d);
+    return 0;
+}
+
+void accept_step(heisenberg *h, int i, int j, float angle) {
+    lattice *tmp;
+    tmp = h->old_l; h->old_l = h->new_l; h->new_l = tmp;
+    set_lat(h->new_l, i, j, angle);
+}
+
+void update(heisenberg *h) {
+    int i = floor((float) rand()*h->new_l->N/RAND_MAX),
+        j = floor((float) rand()*h->new_l->N/RAND_MAX);
+    float angle = rand()*PI/RAND_MAX,
+          acc   = (float) rand()/RAND_MAX,
+          dE;
+
+    set_lat(h->new_l, i, j, angle);
+    calc_all(h->new_l, h->d);
+    dE = h->new_l->E - h->old_l->E;
+    switch(h->mct) {
+        case METROPOLIS:
+            if (dE < 0 || acc < exp(-dE)) {
+                accept_step(h, i, j, angle);
+            }
+            break;
+        case GLAUBER:
+            if (acc < 1/(1+exp(dE))) 
+                accept_step(h, i, j, angle);
+            break;
+    }
+}
+
+void many_updates(heisenberg *h, int Nu) {
+    for(int i=0; i<Nu; ++i)
+        update(h);
+}
+
+
+int main(int argc, char **argv) {
+    if (argc < 6) {
+        printf("missing args");
+        return 1;
+    }
+
+    int N = atoi(argv[1]);
+    float h = atof(argv[2]),
+          k = atof(argv[3]);
+    int B = atoi(argv[4]),
+        a = atoi(argv[5]);
+
+    heisenberg *he = (heisenberg*) malloc(sizeof(heisenberg));
+    printf("#initialisation...\n");
+    init_heisenberg(he, N, h, k, B, a, RANDOM, METROPOLIS);
+    update(he);
+    print_lat(he->old_l, 0); 
+    printf("#running...\n");
+    for (int t=0; t<10000; ++t) {
+        printf("#%03u\n", t);
+        many_updates(he, 100);
+        print_lat(he->old_l, t);
+    }
+
+
+
+    return 0;
+}
+
+// Qstom plot

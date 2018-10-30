@@ -1,0 +1,15 @@
+set term png size 400, 400
+
+set pm3d map interpolate 0,0
+unset colorbox
+set cbrange [0:3.1415]
+
+! rm picture*
+
+do for [i=0:1000:50] { 
+    print(i)
+    set output sprintf("picture%03i.png", i); 
+    splot "<awk ' {if ($1==".i." || NF==0) print; else if ($1>".i.") exit;}' log" u 2:3:4;
+}
+
+

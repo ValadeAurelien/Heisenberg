@@ -1,0 +1,8 @@
+To use this program :
+```
+mkdir build && cd build
+cmake ..
+make 
+cp ../heisenberg_wrapper.py .
+```
+
