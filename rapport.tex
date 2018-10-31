@@ -262,60 +262,225 @@ Ces valeurs sont particulièrement stables puisqu'on a $m,q \in [-1, 1]$ et $e \
 \subsubsection{Algorithmes utilisés}
 
 Après initialisation des différentes parties du code, on procède à l'exploration de l'espace des
-phases par méthode de Monté-Carlo. Chaque pas suit la procédure décrite en figure \ref{fig:update}.
-\begin{figure}[h]
-    \begin{algorithmic}
-        \State $i \gets  $ int\_uniform\_random(0, $N-1$)
-        \Comment{ligne à modifier}
-        \State $j \gets  $ int\_uniform\_random(0, $N-1$)
-        \Comment{colonne à modifier}
-        \State $a \gets  $ uniform\_random(0, $\pi$)
-        \Comment{nouvel angle}
-        \State $p \gets  $ uniform\_random(0, 1)
-        \Comment{probabilité d'acceptation} \medskip
-        \State $b \gets  $ get\_lattice\_value(lattice, $i$, $j$)
-        \Comment{sauvegarde de l'angle}
-        \State $E \gets  $ get\_energy(lattice)
-        \Comment{sauvegarde de l'énergie} \medskip
-        \State set\_lattice\_value(lattice, $i$, $j$, $a$)
-        \Comment{assignation du nouvel angle}
-        \State compute\_energy(lattice)
-        \Comment{calcul de l'énergie dans la nouvelle configuration}
-        \State $\Delta E \gets $ get\_energy(lattice) $ - E$ \medskip
-        \If {monte\_carlo=\texttt{METROPOLIS}}
-            \If {$\exp(-\Delta E) < p$} 
-            \Comment{si le pas est rejeté}
-                \State set\_lattice\_value(lattice, $i$, $j$, $b$)
-                \Comment{réassignation de l'ancienne valeur d'angle}
-                \State set\_energy(lattice, $E$)
-                \Comment{réassignation de l'ancienne valeur d'énergie}
-            \EndIf
-        \ElsIf {monte\_carlo=\texttt{GLAUBER}}
-            \If {$1/(1+\exp(\Delta E)) < p$} 
-            \Comment{si le pas est rejeté}
-                \State set\_lattice\_value(lattice, $i$, $j$, $b$)
-                \Comment{réassignation de l'ancienne valeur d'angle}
-                \State set\_energy(lattice, $E$)
-                \Comment{réassignation de l'ancienne valeur d'énergie}
-            \EndIf
-        \EndIf
-    \end{algorithmic}
+phases par méthode de Monté-Carlo comme vue en cours. À chaque itération, une cellule de la grille
+est choisie au hasard à laquelle on assigne un angle aléatoire. On recalcule l'énergie de la
+nouvelle configuration. On propose ensuite deux méthodes
+\begin{itemize}
+    \item  \texttt{METROPOLIS} : la modification est acceptée avec une probabilité de $\min(1, \exp(-\Delta
+        E))$, sinon elle est rejetée ;
+    \item \texttt{GLAUBER} : la modification est acceptée avec une probabilité de $1/(1+\exp(\Delta
+        E)$, sinon elle est rejetée.
+\end{itemize}
 
+La procédure est décrite en pseudo-code dans la figure \ref{fig:update}.
+\begin{figure}[h]
+    \fbox{
+    \begin{minipage}[]{\textwidth}
+        \begin{algorithmic}
+            \State $i \gets  $ int\_uniform\_random(0, $N-1$)
+            \Comment{ligne à modifier}
+            \State $j \gets  $ int\_uniform\_random(0, $N-1$)
+            \Comment{colonne à modifier}
+            \State $a \gets  $ uniform\_random(0, $\pi$)
+            \Comment{nouvel angle}
+            \State $p \gets  $ uniform\_random(0, 1)
+            \Comment{probabilité d'acceptation} \medskip
+            \State $b \gets  $ get\_lattice\_value(lattice, $i$, $j$)
+            \Comment{sauvegarde de l'angle}
+            \State $E \gets  $ get\_energy(lattice)
+            \Comment{sauvegarde de l'énergie} \medskip
+            \State set\_lattice\_value(lattice, $i$, $j$, $a$)
+            \Comment{assignation du nouvel angle}
+            \State compute\_energy(lattice)
+            \Comment{calcul de l'énergie dans la nouvelle configuration}
+            \State $\Delta E \gets $ get\_energy(lattice) $ - E$ \medskip
+            \If {monte\_carlo=\texttt{METROPOLIS}}
+                \If {$\exp(-\Delta E) < p$} 
+                \Comment{si le pas est rejeté}
+                    \State set\_lattice\_value(lattice, $i$, $j$, $b$)
+                    \Comment{réassignation de l'ancienne valeur d'angle}
+                    \State set\_energy(lattice, $E$)
+                    \Comment{réassignation de l'ancienne valeur d'énergie}
+                \EndIf
+            \ElsIf {monte\_carlo=\texttt{GLAUBER}}
+                \If {$1/(1+\exp(\Delta E)) < p$} 
+                \Comment{si le pas est rejeté}
+                    \State set\_lattice\_value(lattice, $i$, $j$, $b$)
+                    \Comment{réassignation de l'ancienne valeur d'angle}
+                    \State set\_energy(lattice, $E$)
+                    \Comment{réassignation de l'ancienne valeur d'énergie}
+                \EndIf
+            \EndIf
+        \end{algorithmic}
+
+    \end{minipage}
+    }
     \caption{Procédure de mise à jour de la grille en pseudo code.}
     \label{fig:update}
 \end{figure}
 
-Une fois le spin d'une particule mis à jour, il faut mettre à jour toutes les quantitées. Deux
-méthodes peuvent alors être utilisées pour calculer la nouvelle valeur de $Q$.
+Une fois le spin d'une particule mis à jour, il faut mettre à jour toutes les quantitées, a savoir
+$M$, $Q$ et $E$. Il s'agit de la partie du code qui demande le plus de calcul. Plus précisément,
+c'est le calcul du couplage qui est le plus lourd, et l'est d'autant plus que l'on considère les
+actions à longue distance.
+
+Une approche naive serait de changer recalculer la magnétisation et du couplage après chaque
+modification sur toute la grille ; une telle approche serait de complexité $\mathcal{O}(n^2\times
+N^2)$.  Une meilleur algorithme, celui-ci en $\mathcal{O}(n^2)$ est décrit en figure \ref{fig:calc}.
+L'idée consiste à ne recalculer que la partie de grille affectée par le changement et de reporter
+directement les modifications sur les scalaires $M$ et $Q$. Le poids final de chaque opération est
+reporté en figure \ref{fig:perfdata}.
+
+\begin{figure}
+    \fbox{
+    \begin{minipage}[]{\textwidth}
+        \begin{algorithmic}
+            \Require $a, b$ la nouvelle/ancienne valeur de l'angle modifié
+            \Require $i, j$ la position de l'angle modifié
+            \Require $M, Q, E$ la magnétisation, le couplage et l'énergie \medskip
+            \State $M \gets M - \cos(b) + \cos(a)$ \medskip
+            \Comment{Mise à jour de la magnétisation}
+            \State $p \gets 0,~q\gets 0$
+            \Comment{Ancienne/nouvelle valeur du couplage local}
+            \For { $i', j'$ in the neighborhood of $i, j$ } 
+                \Comment{ Boucle sur les particules en interaction }
+                \State $p \gets p \,+ $ get\_interaction\_value($i'$, $j'$)
+                \Comment{ Ancienne valeur }
+                \State compute\_interaction\_one\_particule($i'$, $j'$)
+                \Comment{ Mise à jour couplage local }
+                \State $q \gets q \,+ $ get\_interaction\_value($i'$, $j'$)
+                \Comment{ Nouvelle valeur }
+            \EndFor
+            \State $Q \gets Q - p + q$
+            \Comment{Mise à jour du couplage}
+            \State $E \gets -k Q -h M$
+            \Comment{Calcul de l'energie}
+        \end{algorithmic}
+    \end{minipage}}
+    \caption{Procédure de mise à jour de l'énergie en pseudo-code.}
+    \label{fig:calc}
+\end{figure}
+
+
+\begin{figure}
+    \begin{center}
+        \begin{verbatim}
+          Children        Self       ...       Symbol
+          ...
+          +   81.17%     0.41%       ...       update    
+          +   75.87%     2.28%       ...       calc_all_one_change
+          +   67.41%    22.76%       ...       calc_inter_one_spin
+          +   14.56%    14.56%       ...       get_cos
+          +   12.19%    12.19%       ...       get_sin
+          +   11.88%    11.88%       ...       add_inter
+          +    8.29%     8.29%       ...       periodic_conditions
+          +    7.77%     7.77%       ...       get_dist                 
+          ...
+        \end{verbatim}
+    \end{center}
+    \caption{Resultats de \texttt{perf} sur le surcoût de calcul pour le programme principal. La
+    fonction \texttt{update} est décrite en figure \ref{fig:update} et la fonction
+    \texttt{calc\_all\_one\_change} est décrite en \ref{fig:calc}. Les fonctions \texttt{get\_*} ne
+    servent qu'à lire les valeurs des différents tableaux, \texttt{add\_inter} ajoute une valeur
+    donnée sur une partie de la grille des couplages locaux, et \texttt{periodic\_conditions} fait
+    la transformation d'indice qui simule les conditions periodiques. }
+    \label{fig:perfdata}
+\end{figure}
+
+\subsection{Fonctionnement des scripts} 
+
+\subsubsection{Script de lancement du code principal}
+
+Ce script est un ``wrapper'' du code principal. Il simplifie l'appel par le nommage des variables, 
+par le passage des valeurs par défaut, etc\footnote{On utilise le package python \texttt{argparse}
+pour le passage des arguments, plus simple à gérer que les fonctions POSIX en C.}.
+
+Il permet aussi de lancer plusieurs types d'experiences :
 \begin{itemize}
-    \item Une méthode qui met à jour les couplages locals pour toutes les particules influencées par
-        le changement introduit. La grille d'interactions produite est donc juste.
-    \item Une seconde méthode qui ne met à jour que la valeur de couplage local modifiée. La mise à
-        jour de $Q$ se fait alors :
-        \begin{equation*}
-            Q \leftarrow Q - Q_I^{\text{old}} + Q_I^{\text{new}} 
-        \end{equation*}<++>
+    \item \textbf{Simple sampling.} Le script permet alors de nommer automatiquement les dossiers de
+        stockage, lance bien sûr automatiquement les $N_\text{simple}$ experiences et compiles tous
+        les fichiers de scalaires en un seul pour une analyse postérieur. Le programme principal est
+        appelé avec un nombre d'itérations à faire nul. Il s'initialise donc avec une grille
+        aléatoire, calcul son énergie, enregistre la grille ainsi que ses valeurs scalaire et
+        quitte.
+    \item \textbf{Sweep.} Il s'agit de parcourir un ensemble de paramètres et de lancer une
+        simulation pour chaque valeur. Contrairement à ce qui était prévu initialement, on se
+        concentre sur des ensembles de couples $(h, k)$ : on peut donc lancer automatiquement 
+        $n_h\times n_k$ simulation avec $\{(h_i, k_j)\}_{h_0 < \hdots < h_{n_h}, k_0 < \hdots < k_{n_k}}$.
+        En plus de lancer les experiences automatiquement, le script nomme automatiquement les
+        dossiers de stockages. 
+    \item \textbf{Parallel sweep.} Même chose pour que pour le sweep, mais les intances du code
+        principale s'executent en parallèle. Autant de processus qu'il y a de simulations à faire
+        sont créés, et on laisse l'OS partager le calcul, ce qui n'est pas optimal mais qui est plus
+        rapide à mettre en place. 
 \end{itemize}
+
+
+\subsubsection{Scipts d'analyse des données}
+
+Ces scripts prennent des dossiers de données formattés par les scripts de lancement présentés
+précedemment. Pour une seule experience, plusieurs visualisations sont possibles :
+\begin{itemize}
+    \item Tracé des scalaires $m$, $q$ et $e$ en fonction du nombre d'itération ;
+    \item Tracé de $q$ en fonction de $m$ ;
+    \item Tracé de grilles $\theta_{ij}$ (une seule, un ensemble, toutes, la dernière), si
+        plusieurs grilles sont demandées, elles sont affichées sous forme d'une film à 5 fps par
+        défault ;
+    \item Tracé de la fonction de d'auto-corrélation radiale $C(r)$.
+\end{itemize}
+
+La fonction de d'auto-correlation radiale peut être vue comme la moyenne des correlations 
+\begin{equation}
+    \begin{aligned}
+        C(r) &= \left< \sigma_i \sigma_j\right>_{i^2+j^2=r^2} 
+        &= \sum_{\substack{i, j \\ i^2+j^2=r^2}} \sigma_i \sigma_j
+    \end{aligned}
+\end{equation}
+Le processus utilisé pour la calculer est décrit en figure \ref{fig:corr}. Le calcul de cette
+fonction est relativement lourd, il est cependant fondamental pour observer la transition de phase.
+On s'attend donc à trouver une fonction de la forme 
+\begin{equation}
+    C_h(r) = b e^{-ar} \iff \log(C_h(r)) = -a r + b
+\end{equation}
+pour des températures au delà de la transition de phase, et 
+\begin{equation}
+    C_l(r) = \frac{1}{b+ar} \iff \frac{1}{C_l(r)}  = a r + b  
+\end{equation}
+pour des températures inférieure à la transition de phase. Comme on peut le
+voir, il est facile de transformer cette fonction en équation linéaire, ce qui
+peut s'avérer utile pour reconnaitre l'un ou l'autre des régimes. On va donc chercher à
+\emph{fitter} ces deux droites affines et noter les $R^2$ pour essayer d'observer une transition de
+comportement.
+
+
+\begin{figure}
+    \fbox{
+    \begin{minipage}[]{\textwidth}
+        \begin{algorithmic}
+            \Require prod\_shift(lattice, i, j) qui retourne un tableau tel que $A_{kl} =
+            B_{kl}B_{(k+i)(j+l)}$ avec des conditions periodiques
+            \Require sum(lattice) qui ajoute toutes les valeurs d'une grille 
+            \Require abs\_sort($X, Y$) tri les valeurs des listes $X$ et $Y$ rapport à $X$
+            \State $X \gets \emptyset,~ Y \gets \emptyset$
+            \For { $i, j$ in $[0, N/4]\times[0, N/4]$ }
+            \Comment{Boucle sur le voisinage à $N/4$ dans une direction}
+                \State push\_item($X$, $\sqrt{i^2+j^2}$)
+                \Comment{Calcul du rayon}
+                \State $ S^{(++)} \, = $ prod\_shift(lattice,$ i, j$)
+                \Comment{Correlations par direction}
+                \State $ S^{(+-)} \, = $ prod\_shift(lattice,$ i, -j$)
+                \State $ S^{(-+)} \, = $ prod\_shift(lattice,$ -i, j$)
+                \State $ S^{(--)} \, = $ prod\_shift(lattice,$ -i, -j$)
+                \State push\_item$\left( Y, \text{sum}\left( \frac{S^{(++)} + S^{(+-)} + S^{(-+)} +
+                S^{(--)}}{4 N^2} \right)\right)$
+                \Comment{Moyenne des correlations directionnelles}
+            \EndFor
+            \State $X, Y \gets $ abs\_sort($X,Y$)
+        \end{algorithmic}
+    \end{minipage}}
+    \caption{Procédure de calcul de la fonction d'autocorrelation.}
+    \label{fig:corr}
+\end{figure}
 
 \bibliographystyle{alpha}
 \bibliography{rapport}

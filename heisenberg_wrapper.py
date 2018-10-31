@@ -471,7 +471,7 @@ class HeisenbergPlot:
         self.corr_x = corr_x[corr_x_range]
         self.corr_y = corr_y[corr_x_range]
         expfit, eres, _, _, _ = np.polyfit(corr_x, np.log(corr_y), 1, full=True)
-        powfit, pres, _, _, _ = np.polyfit(corr_x, 1/corr_y-1, 1, full=True)
+        powfit, pres, _, _, _ = np.polyfit(corr_x, 1/corr_y, 1, full=True)
         print("expfit : %.2fx+%.2f, R^2 = %f\n"
               "powfit : %.2fx+%.2f, R^2 = %f\n"%
               (expfit[0], expfit[1], eres,
