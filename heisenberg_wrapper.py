@@ -128,7 +128,6 @@ class HeisenbergSimpleSampling:
                 for p in range(self.parallel):
                     if n*self.parallel+p<len(self.HLs):
                         self.HLs[n*self.parallel+p].start()
-                        self.HLs[n*self.parallel+p].run()
                 for p in range(self.parallel):
                     if n*self.parallel+p<len(self.HLs):
                         self.HLs[n*self.parallel+p].join()
@@ -196,7 +195,6 @@ class HeisenbergManyLaunches:
                 for p in range(self.parallel):
                     if not n*self.parallel+p>=len(self.HLs):
                         self.HLs[n*self.parallel+p].start()
-                        self.HLs[n*self.parallel+p].run()
                 for p in range(self.parallel):
                     if not n*self.parallel+p>=len(self.HLs):
                         self.HLs[n*self.parallel+p].join()
@@ -266,7 +264,6 @@ class HeisenbergSweeps:
                 for p in range(self.parallel):
                     if not n*self.parallel+p>=len(self.HLs):
                         self.HLs[n*self.parallel+p].start()
-                        self.HLs[n*self.parallel+p].run()
                 for p in range(self.parallel):
                     if not n*self.parallel+p>=len(self.HLs):
                         self.HLs[n*self.parallel+p].join()
