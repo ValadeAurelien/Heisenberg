@@ -744,7 +744,7 @@ if __name__ == "__main__":
                         help='if launch : h sweep begin, end, nsteps\n')
     parser.add_argument('-ksweep', type=int, nargs='*',
                         help='if launch : k sweep begin, end, nsteps\n')
-    parser.add_argument('-par', type=int,
+    parser.add_argument('-par', action='count',
                         help='parallel or sequential sweeps')
     parser.add_argument('-ntrials', type=int,
                         help='number of trials for simple sampling or'
