@@ -560,7 +560,7 @@ int main(int argc, char **argv) {
     t_percent = (t_percent < 1 ? 1 : t_percent);
     heisenberg *he = (heisenberg*) malloc(sizeof(heisenberg));
     printf("#initialisation.");
-    init_heisenberg(he, N, h, k, neighb, a, RANDOM, METROPOLIS);
+    init_heisenberg(he, N, h, k, neighb, a, CHECKERBOARD, METROPOLIS);
     printf(".");
     print_lat(he->l, 0, LATTICE, latfname, intfname, ext, scaf);
     printf(".");

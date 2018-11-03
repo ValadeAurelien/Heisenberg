@@ -543,12 +543,31 @@ présentes dans chaque longue expérience.
 
 \section{Résultats}
 
+\subsection{Test du code sur des configurations simples}
+
+On teste le code sur des configurations connues :
+\begin{itemize}
+    \item \texttt{UP} : \\
+        On trouve bien $m = q = 1$. Il s'agit d'une configuration stable à basse température, pour
+        $h>0, k>0$.
+    \item \texttt{DOWN} : \\
+        On trouve bien $m = -1$, $q = 1$. Il s'agit d'une configuration stable à basse température,
+        pour $h<0, k>0$.
+    \item \texttt{CHECKERBOARD} : \\
+        On trouve bien $m = 0$, $q = -0.17$. Il s'agit d'une configuration stable à haute
+        température, pour $k=0, k<0$.
+\end{itemize}
+
 \subsection{Experience à température infinie}
 
 Pour simuler une température infinie, on prend $(h, k) = (0, 0)$. Comme le montre la figure
 \ref{fig:inf_en_sca}, l'énergie relative reste donc nulle tout au long de l'expérience, toute
-modification est acceptée. Ce comportement est cohérent avec la physique du problème : à température
-infinie, chaque particule a une énergie infinie, et donc est indifférente à sa configuration.
+modification est acceptée. La moyenne des spins et les couplages sont donc aléatoires. Ce
+comportement est cohérent avec la physique du problème : à température infinie, chaque particule a
+une énergie infinie, et donc est indifférente à sa configuration.
+
+Pour un ensemble de $1000$ expériences, la moyenne se stabilise autour de $m=3\,10^{-5}$, $q=0.405$, avec une erreur
+statistique de $\Sigma_m = 5\,10{-4}$, $\Sigma_q = 3\,10^{-4}$. 
 
 \begin{figure}
     \centering
@@ -558,6 +577,68 @@ infinie, chaque particule a une énergie infinie, et donc est indifférente à s
     $N=128$, avec prise en compte des $n=1$ plus proches voisins et une décroissance en $a=1$.}
     \label{fig:inf_en_sca}
 \end{figure}
+
+Comme attendu, la magnétisation moyenne est aux alentours de $0$, cependant le couplage oscile lui
+vers $0.4$. Ceci s'explique par le fait que l'on ne considère dans les plus proches voisins pas que
+les points $\{(i+1, j), (i, j+1), (i-1, j), (i, j-1)\}$, mais aussi les diagonales $\{(i+1, j+1),
+(i-1, j-1), (i+1, j-1), (i-1, j+1)\}$. Avec ces interactions, la valeur moyenne de couplage est non
+nulle. On note d'ailleurs qu'aucune configuration ne permet d'avoir un couplage $Q=-1$, comme on
+pouvait l'avoir avec la configuration \texttt{CHECKERBOARD} sans les interactions diagonales. 
+
+\begin{figure}
+    \centering
+    \includegraphics[height=.25\textheight]{build/lattice_9900000_hksweep_huge_h20k20.png}
+    \includegraphics[height=.25\textheight]{build/corr_hksweep_huge_h20k20.png}
+    \caption{Grille finale et fonction d'auto-corrélation radiale, une experience à température
+    infinie $(h, k) = (0, 0)$ pour une grille de $N=128$, avec prise en compte des $n=1$ plus
+    proches voisins et une décroissance en $a=1$.} 
+    \label{fig:inf_en_sca}
+\end{figure}
+
+La fonction de correlation radiale est présentée en figure 7. On remarque une décroissance très
+rapide de la corrélation comme prévue. En revanche celle-ci ne semble pas suivre une loi exponentielle
+comme prédit par la théorie. Cela peut être lié au fait qu'à température infinie, il n'y a \emph{a
+priori} aucune correlation, comme on peut le voir sur les courbes, la fonction d'auto-corrélation
+tombe à sa valeur minimale dès $r=1$.
+
+\subsubsection{Expérience à haute température}
+
+On choisie arbitrairement $(h, k) = (0, 1)$ pour simuler une expérience à ``haute'' température sans
+polarité favorisée. Comme le montre la figure
+\ref{fig:high_en_sca}, on observe une convergence du couplage vers une valeur autre que sa valeur
+initiale : $m = 0$, $q=0.6$, avec $\Sigma_m = 1$, $\Sigma_q = 1$, ce qui prouve que la:
+
+\begin{figure}
+    \centering
+    \includegraphics[height=.25\textheight]{build/sca1_hksweep_huge_h20k22.png}
+    \includegraphics[height=.25\textheight]{build/sca2_hksweep_huge_h20k22.png}
+    \caption{Scalaires une experience à température infinie $(h, k) = (0, 0)$ pour une grille de
+    $N=128$, avec prise en compte des $n=1$ plus proches voisins et une décroissance en $a=1$.}
+    \label{fig:high_en_sca}
+\end{figure}
+
+Comme attendu, la magnétisation moyenne est aux alentours de $0$, cependant le couplage oscile lui
+vers $0.4$. Ceci s'explique par le fait que l'on ne considère dans les plus proches voisins pas que
+les points $\{(i+1, j), (i, j+1), (i-1, j), (i, j-1)\}$, mais aussi les diagonales $\{(i+1, j+1),
+(i-1, j-1), (i+1, j-1), (i-1, j+1)\}$. Avec ces interactions, la valeur moyenne de couplage est non
+nulle. On note d'ailleurs qu'aucune configuration ne permet d'avoir un couplage $Q=-1$, comme on
+pouvait l'avoir avec la configuration \texttt{CHECKERBOARD} sans les interactions diagonales. 
+
+\begin{figure}
+    \centering
+    \includegraphics[height=.25\textheight]{build/lattice_9900000_hksweep_huge_h20k22.png}
+    \includegraphics[height=.25\textheight]{build/corr_hksweep_huge_h20k22.png}
+    \caption{Grille finale et fonction d'auto-corrélation radiale, une experience à température
+    infinie $(h, k) = (0, 0)$ pour une grille de $N=128$, avec prise en compte des $n=1$ plus
+    proches voisins et une décroissance en $a=1$.} 
+    \label{fig:high_en_sca}
+\end{figure}
+
+La fonction de correlation radiale est présentée en figure 7. On remarque une décroissance très
+rapide de la corrélation comme prévue. En revanche celle-ci ne semble pas suivre une loi exponentielle
+comme prédit par la théorie. Cela peut être lié au fait qu'à température infinie, il n'y a \emph{a
+priori} aucune correlation, comme on peut le voir sur les courbes, la fonction d'auto-corrélation
+tombe à sa valeur minimale dès $r=1$.
 
 
 \bibliographystyle{alpha}

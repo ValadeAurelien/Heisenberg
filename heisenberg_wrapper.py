@@ -91,15 +91,18 @@ class HeisenbergSimpleSampling:
     neighb	= None
     a		= None
     n_trials = None
+    parallel = None
+    HLs = []
 
     def __init__(self, rootdircty, latf="lattice", intf="inter",
-                 scaf="scalars", ext=".dat", n_trials=None):
+                 scaf="scalars", ext=".dat", parallel=None, n_trials=None):
         self.rootdircty = rootdircty + "/"
         self.latf = latf
         self.intf = intf
         self.scaf = scaf
         self.ext = ext
         self.n_trials = n_trials
+        self.parallel = parallel
 
     def set_args(self, N=None, neighb=None, a=None,
                  n_trials=None):
@@ -107,14 +110,38 @@ class HeisenbergSimpleSampling:
         self.neighb	= neighb if not neighb==None else self.neighb
         self.a = a           if not a==None      else self.a
 
-    def run(self):
         for n in range(self.n_trials):
-            HL = HeisenbergLauncher(self.rootdircty + "trial_" + str(n),
-                                    self.latf, self.intf, self.scaf, self.ext)
-            HL.make_or_clear_dir()
-            HL.set_args(self.N, h=0, k=0, neighb=self.neighb, a=self.a,
-                        t_max=0, t_lat=0, t_sca=0)
-            HL.run()
+            if (self.parallel):
+                self.HLs.append(HeisenbergLauncherThreaded(self.rootdircty + "trial_" + str(n),
+                                                           self.latf, self.intf, self.scaf, self.ext))
+            else:
+                self.HLs.append(HeisenbergLauncher(self.rootdircty + "trial_" + str(n),
+                                                   self.latf, self.intf, self.scaf, self.ext))
+            self.HLs[-1].set_args(self.N, 0, 0, self.neighb,
+                                    self.a, 0, 0, 0)
+            self.HLs[-1].make_or_clear_dir()
+
+    def run(self):
+        if (self.parallel):
+            n_runs = len(self.HLs)//self.parallel
+            for n in range(n_runs):
+                for p in range(self.parallel):
+                    if n*self.parallel+p<len(self.HLs):
+                        self.HLs[n*self.parallel+p].start()
+                        self.HLs[n*self.parallel+p].run()
+                for p in range(self.parallel):
+                    if n*self.parallel+p<len(self.HLs):
+                        self.HLs[n*self.parallel+p].join()
+        else:
+            for HL in self.HLs:
+                HL.run()
+
+        outf = open(self.rootdircty + "/" + self.scaf + self.ext, "w")
+        argline = ["cat"]
+        for n in range(self.n_trials):
+            argline.append(self.rootdircty + "trial_" + str(n) +
+                           "/" + self.scaf + self.ext)
+        subprocess.Popen(argline, stdout=outf)
 
 class HeisenbergManyLaunches:
     rootdircty, latf, scaf = None, None, None
@@ -161,15 +188,23 @@ class HeisenbergManyLaunches:
                                     self.a, self.t_max, self.t_lat, self.t_sca)
             self.HLs[-1].make_or_clear_dir()
 
+
     def run(self):
-        for HL in self.HLs:
-            if (self.parallel):
-                HL.start()
-            else:
-                HL.run()
         if (self.parallel):
+            n_runs = len(self.HLs)//self.parallel
+            for n in range(n_runs):
+                for p in range(self.parallel):
+                    if not n*self.parallel+p>=len(self.HLs):
+                        self.HLs[n*self.parallel+p].start()
+                        self.HLs[n*self.parallel+p].run()
+                for p in range(self.parallel):
+                    if not n*self.parallel+p>=len(self.HLs):
+                        self.HLs[n*self.parallel+p].join()
+        else:
             for HL in self.HLs:
-                HL.join()
+                HL.run()
+
+
 
 class HeisenbergSweeps:
     rootdircty, latf, scaf = None, None, None
@@ -225,14 +260,19 @@ class HeisenbergSweeps:
                 self.HLs[-1].make_or_clear_dir()
 
     def run(self):
-        for HL in self.HLs:
-            if (self.parallel):
-                HL.start()
-            else:
-                HL.run()
         if (self.parallel):
+            n_runs = len(self.HLs)//self.parallel
+            for n in range(n_runs):
+                for p in range(self.parallel):
+                    if not n*self.parallel+p>=len(self.HLs):
+                        self.HLs[n*self.parallel+p].start()
+                        self.HLs[n*self.parallel+p].run()
+                for p in range(self.parallel):
+                    if not n*self.parallel+p>=len(self.HLs):
+                        self.HLs[n*self.parallel+p].join()
+        else:
             for HL in self.HLs:
-                HL.join()
+                HL.run()
 
 
 def avg_2p2(X):
@@ -242,6 +282,12 @@ def avg_2p2(X):
 
 def prod_shift(tab, i, j):
     return ( tab * np.roll(np.roll(tab, i, axis=0), j, axis=1) )
+
+def format_rtd(rtd):
+    rtd = rtd.replace("/", "_")
+    while rtd[-1] == "_":
+        rtd = rtd[:-1]
+    return(rtd)
 
 class HeisenbergPlot:
     rootdircty, rootlatf, rootintf, rootscaf = None, None, None, None
@@ -324,16 +370,17 @@ class HeisenbergPlot:
             self.plot_lat = self.ax_lat.imshow(self.lattice,
                                                interpolation="bicubic",
                                                vmin=0, vmax=np.pi)
-            plt.show(block=False)
+            if not self.png:
+                plt.show(block=False)
         else:
             self.plot_lat.set_data(self.lattice)
 
     def show_lattice(self):
+        if (self.png):
+            self.fig_lat.savefig("lattice_" + str(self.n_lat) + "_" +
+                                 format_rtd(self.rootdircty) + ".png")
         self.fig_lat.canvas.draw()
         self.fig_lat.canvas.flush_events()
-        if (self.png):
-            fig_lat.savefig("lattice_" + self.rootdircty +
-                            str(self.n_lat) + ".png")
 
     def refresh_n_show_lattice(self):
         self.read_lattice()
@@ -370,7 +417,8 @@ class HeisenbergPlot:
             self.fig_int = plt.figure("inter")
             self.ax_int = self.fig_int.add_subplot(111)
             self.plot_int = self.ax_int.imshow(-self.inter, vmin=0, vmax=np.pi)
-            plt.show(block=False)
+            if not self.png:
+                plt.show(block=False)
         else:
             self.plot_int.set_data(-self.inter)
 
@@ -457,9 +505,9 @@ class HeisenbergPlot:
         self.fig_sca2.canvas.flush_events()
 
         if (self.png):
-            self.fig_sca1.savefig("sca1_" + self.rootdircty.replace("/", "_")[:-2]
+            self.fig_sca1.savefig("sca1_" + format_rtd(self.rootdircty)
                                   + ".png")
-            self.fig_sca2.savefig("sca2_" + self.rootdircty.replace("/", "_")[:-2]
+            self.fig_sca2.savefig("sca2_" + format_rtd(self.rootdircty)
                                   + ".png")
 
     def refresh_n_show_scalars(self):
@@ -481,10 +529,10 @@ class HeisenbergPlot:
         n2 = np.argmax(serr_avgs[2])
         n  = max((n0, n1, n2))
         serr = [savg[n] for savg in serr_avgs]
-        fig_serr, ax_serr = plt.subplots(3, 1)
-        ax_serr[0].plot(np.log2(ns), serr_avgs[0], "b", label="stat err M")
-        ax_serr[1].plot(np.log2(ns), serr_avgs[1], "r", label="stat err Q")
-        ax_serr[2].plot(np.log2(ns), serr_avgs[2], "g", label="stat err E")
+        # fig_serr, ax_serr = plt.subplots(3, 1)
+        # ax_serr[0].plot(np.log2(ns), serr_avgs[0], "b", label="stat err M")
+        # ax_serr[1].plot(np.log2(ns), serr_avgs[1], "r", label="stat err Q")
+        # ax_serr[2].plot(np.log2(ns), serr_avgs[2], "g", label="stat err E")
         self.stat['serr'] = serr
         self.stat['serrn'] = 2**(np.log2(len(self.scalars[0])-self.stab) - n -1)
 
@@ -554,23 +602,30 @@ class HeisenbergPlot:
         corr_x_range = corr_x<10
         self.corr_x = corr_x[corr_x_range]
         self.corr_y = corr_y[corr_x_range]
-        expfit, eres, _, _, _ = np.polyfit(corr_x, np.log(corr_y), 1, full=True)
-        powfit, pres, _, _, _ = np.polyfit(corr_x, 1/corr_y, 1, full=True)
+        expfit, eres, _, _, _ = np.polyfit(self.corr_x, np.log(self.corr_y),
+                                           1, full=True)
+        powfit, pres, _, _, _ = np.polyfit(self.corr_x, 1/self.corr_y,
+                                           1, full=True)
         print("expfit : %.2fx+%.2f, R^2 = %f\n"
               "powfit : %.2fx+%.2f, R^2 = %f\n"%
               (expfit[0], expfit[1], eres,
                powfit[0], powfit[1], pres))
         if (self.show_corr):
             fig_corr, ax_corr = plt.subplots(3, 1)
-            ax_corr[0].plot(corr_x, corr_y, "b", label="correlation")
-            ax_corr[1].plot(corr_x, np.log(corr_y), "g", label="log(corr)")
-            ax_corr[1].plot(corr_x, expfit[0]*corr_x + expfit[1], "grey")
-            ax_corr[2].plot(corr_x, 1/corr_y-1, "r", label="1/corr-1")
-            ax_corr[2].plot(corr_x, powfit[0]*corr_x + powfit[1], "grey")
+            ax_corr[0].plot(self.corr_x, self.corr_y,
+                            "b", label="correlation")
+            ax_corr[1].plot(self.corr_x, np.log(self.corr_y),
+                            "g", label="log(corr), R^2=%.2g"%(eres))
+            ax_corr[1].plot(self.corr_x, expfit[0]*self.corr_x + expfit[1],
+                            "grey")
+            ax_corr[2].plot(self.corr_x, 1/self.corr_y,
+                            "r", label="1/corr-1, R^2=%.2g"%(pres))
+            ax_corr[2].plot(self.corr_x, powfit[0]*self.corr_x + powfit[1],
+                            "grey")
             fig_corr.legend()
 
             if (self.png):
-                fig_corr.savefig("corr_" + self.rootdircty.replace("/", "_")[:-2]
+                fig_corr.savefig("corr_" + format_rtd(self.rootdircty)
                                  + ".png")
 
     def plot_hsweep_vs_h(self):
@@ -626,7 +681,7 @@ class HeisenbergPlot:
                                                                   label="h = %.1f"%(hs[i])))
 
             if (self.png):
-                fig_hsweep.savefig("hsweep_" + self.rootdircty.replace("/", "_")[:-2]
+                fig_hsweep.savefig("hsweep_" + format_rtd(self.rootdircty)
                                    + ".png")
 
     def plot_ksweep_vs_h(self):
@@ -682,10 +737,8 @@ class HeisenbergPlot:
                                                                   label="h = %.1f"%(hs[i])))
 
             if (self.png):
-                fig_ksweep.savefig("ksweep_" + self.rootdircty.replace("/", "_")[:-2]
+                fig_ksweep.savefig("ksweep_" + format_rtd(self.rootdircty)
                                    + ".png")
-
-
 
 
     def analyse(self):
@@ -702,6 +755,17 @@ class HeisenbergPlot:
                 self.many_scalars.append(self.scalars)
                 self.calc_stat()
                 self.stats[tuple(self.header)] = self.stat
+        self.mean = np.mean([ s['mean'] for s in self.stats.values()],
+                               axis=0, dtype=float)
+        self.serr = np.mean([ s['std'] for s in self.stats.values()],
+                               axis=0, dtype=float)
+        self.serrn = len(self.stats.values())
+        self.serr /= np.sqrt(self.serrn)
+        print("Analyse : \n"
+              "mean            : \t\t%-8g \t\t%-8g \t\t%-8g\n"
+              "statistical err : \t\t%-8g \t\t%-8g \t\t%-8g"%
+              (self.mean[0], self.mean[1], self.mean[2],
+               self.serr[0], self.serr[1], self.serr[2]))
 
     def plot_analyse(self):
         if (self.plot_stat == None ):
@@ -714,7 +778,7 @@ class HeisenbergPlot:
                     self.plot_stat[0] = self.ax_stat.scatter(sca[1, stab::step],
                                                              sca[2, stab::step])
                     if (self.png):
-                        fig.savefig("MQ_" + self.rootdircty.replace("/", "_")[:-2]
+                        fig.savefig("MQ_" + format_rtd(self.rootdircty)
                                     + ".png")
 
 if __name__ == "__main__":
@@ -744,7 +808,7 @@ if __name__ == "__main__":
                         help='if launch : h sweep begin, end, nsteps\n')
     parser.add_argument('-ksweep', type=int, nargs='*',
                         help='if launch : k sweep begin, end, nsteps\n')
-    parser.add_argument('-par', action='count',
+    parser.add_argument('-par', type=int,
                         help='parallel or sequential sweeps')
     parser.add_argument('-ntrials', type=int,
                         help='number of trials for simple sampling or'
@@ -763,6 +827,8 @@ if __name__ == "__main__":
                         help='plot ksweep')
     parser.add_argument('-ana', action='count',
                         help='plot whole analyse')
+    parser.add_argument('-noplot', action='count',
+                        help='don\'t actually plot')
     parser.add_argument('-png', action='count',
                         help='create pngs instead of plotting')
 
@@ -820,6 +886,7 @@ if __name__ == "__main__":
                                        latf="lattice",
                                        scaf="scalars",
                                        ext=".dat",
+                                       parallel = args.get('par'),
                                        n_trials = args['ntrials'])
         HSS.set_args(N=args.get('N'), neighb=args.get('n'), a=args.get('a'))
         HSS.run()
@@ -831,13 +898,16 @@ if __name__ == "__main__":
                             png=args.get('png'))
         if (args.get('phsweep')):
             HP.analyse()
-            HP.plot_hsweep_vs_k()
+            if not args.get('noplot'):
+                HP.plot_hsweep_vs_k()
         if (args.get('pksweep')):
             HP.analyse()
-            HP.plot_ksweep_vs_h()
+            if not args.get('noplot'):
+                HP.plot_ksweep_vs_h()
         if (args.get('ana')):
             HP.analyse()
-            HP.plot_analyse()
+            if not args.get('noplot'):
+                HP.plot_analyse()
         else:
             if(args.get('sca')):
                 HP.refresh_n_show_scalars()
