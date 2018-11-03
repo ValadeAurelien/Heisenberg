@@ -1,4 +1,4 @@
-\documentclass[a4paper, openany, 11pt]{article}
+\documentclass[a4paper, 11pt]{article}
 
 %%% PACKAGES %%%
 \usepackage[left=2cm, right=2cm, top=2.5cm, bottom=2.5cm]{geometry}
@@ -36,6 +36,8 @@
 
 \newcommand{\vr}{\bm{r}}
 \newcommand{\kb}{\mathcal{k}_B}
+\DeclareMathOperator\argmin{argmin}
+\DeclareMathOperator\argmax{argmax}
 
 \title{Simulation du modèle XY par méthode Monté-Carlo \medskip \\ 
        \Large Rapport de projet pour le cours de Computationnal Statistical Physics }
@@ -429,7 +431,8 @@ précedemment. Pour une seule experience, plusieurs visualisations sont possible
     \item Tracé de la fonction de d'auto-corrélation radiale $C(r)$.
 \end{itemize}
 
-La fonction de d'auto-correlation radiale peut être vue comme la moyenne des correlations 
+\paragraph{Fonction d'autocorrelation.} La fonction de d'auto-correlation radiale peut être vue
+comme la moyenne des correlations 
 \begin{equation}
     \begin{aligned}
         C(r) &= \left< \sigma_i \sigma_j\right>_{i^2+j^2=r^2} 
@@ -438,7 +441,10 @@ La fonction de d'auto-correlation radiale peut être vue comme la moyenne des co
 \end{equation}
 Le processus utilisé pour la calculer est décrit en figure \ref{fig:corr}. Le calcul de cette
 fonction est relativement lourd, il est cependant fondamental pour observer la transition de phase.
-On s'attend donc à trouver une fonction de la forme 
+D'autres méthodes, plus rapides, basées sur des transformées de Fourier ont été essayées, sans
+succès cependant.
+
+On rappelle qu'on s'attend à trouver une fonction de la forme 
 \begin{equation}
     C_h(r) = b e^{-ar} \iff \log(C_h(r)) = -a r + b
 \end{equation}
@@ -446,12 +452,10 @@ pour des températures au delà de la transition de phase, et
 \begin{equation}
     C_l(r) = \frac{1}{b+ar} \iff \frac{1}{C_l(r)}  = a r + b  
 \end{equation}
-pour des températures inférieure à la transition de phase. Comme on peut le
-voir, il est facile de transformer cette fonction en équation linéaire, ce qui
-peut s'avérer utile pour reconnaitre l'un ou l'autre des régimes. On va donc chercher à
-\emph{fitter} ces deux droites affines et noter les $R^2$ pour essayer d'observer une transition de
-comportement.
-
+pour des températures inférieure à la transition de phase. Comme on peut le voir, il est facile de
+transformer ces fonctions en équations linéaires, ce qui peut s'avérer utile pour reconnaitre l'un
+ou l'autre des régimes. On va donc chercher à \emph{fitter} ces deux droites affines et noter les
+$R^2$ pour essayer d'observer une transition de comportement.
 
 \begin{figure}
     \fbox{
@@ -481,6 +485,80 @@ comportement.
     \caption{Procédure de calcul de la fonction d'autocorrelation.}
     \label{fig:corr}
 \end{figure}
+
+\paragraph{Stabilisation.} Une première méthode qui permet de détecter la stabilisation est mise en
+place. Il s'agit de moyenner les $m$ derniers points de $E(t)$, et de noter la première fois que
+cette valeur est atteinte. Cette heuristique se base sur le fait que l'énergie est globalement
+décroissante si $(h,k)$, et qu'elle converge donc vers sa valeur finale, moyennant fluctuations.
+Pour éviter les problèmes d'égalités entre nombres flottants et pour tenir compte desdites
+fluctuations, on considère :
+\begin{equation*}
+    t_{\text{stab}} = \min t \text{~t.q.~} \left( \frac{\left< E \right>_{\text{end}} - E(t)}
+    {E(0) - \left< E \right>_{\text{end}}} \right) < 1.
+\end{equation*}
+
+On peut ensuite se poser la question de la corrélation temporelle : une longue expérience doit avoir
+un poids statistique plus fort qu'une expérience plus courte, le lier à l'erreur statistique est
+plus difficile. Une méthode pour estimer l'erreur est présentée en figure \ref{fig:err}. Elle
+consiste à découper récursivement une expérience en plusieurs sous-expériences de taille un demi, et
+de choisir l'ensemble de sous-expériences pour laquelle l'erreur statistique
+\begin{equation*}
+    \Sigma_N = \frac{\sigma}{\sqrt{N}}
+\end{equation*}
+est la plus grande. Cela nous permet de savoir combien de sous-expériences ``indépendantes'' sont
+présentes dans chaque longue expérience.
+
+\begin{figure}
+    \fbox{
+        \begin{minipage}[]{\textwidth}
+            \begin{algorithmic}
+                \Require $L_M,~L_Q,~L_E$ les listes des valeurs de $M,~Q,~E$ après stabilisation
+                \Require average\_2($A$) une fonction qui renvoie une liste de taille $N/2$ dont chaque
+                point vaut \[ B_i = 1/2 \, ( A_{2i} + A_{2i+1} ) \]
+                \Require standard($A$) une fonction qui calcule l'écart type
+                \State $S \gets (\emptyset, \emptyset, \emptyset)$
+                \For {  $i \in\{M, Q, E\}$ }
+                \State $L_n = \emptyset$
+                \State $n \gets $ len($L_i$)
+                \While { $n > 1$ }
+                \State $ L_i = $ average\_2($L_i$)
+                \State append\_value(get\_sublist($S$, $i$), standard($L_i$))
+                \State $n \gets $ len($L_i$)
+                \EndWhile
+                \EndFor
+                \State $n_M \gets \argmax$ get\_sublist($S, 1$)
+                \State $n_Q \gets \argmax$ get\_sublist($S, 2$)
+                \State $n_E \gets \argmax$ get\_sublist($S, 3$)
+                \State $n \gets \min(n_M, n_Q, n_E)$
+                \State $e_M \gets $ get\_value($S(1), \, n$)
+                \State $e_Q \gets $ get\_value($S(2), \, n$)
+                \State $e_E \gets $ get\_value($S(3), \, n$)
+            \end{algorithmic}
+        \end{minipage}
+    }
+    \caption{Procédure de calcul de l'erreur statistique sur une longue expérience.}
+    \label{fig:err}
+\end{figure}
+
+
+\section{Résultats}
+
+\subsection{Experience à température infinie}
+
+Pour simuler une température infinie, on prend $(h, k) = (0, 0)$. Comme le montre la figure
+\ref{fig:inf_en_sca}, l'énergie relative reste donc nulle tout au long de l'expérience, toute
+modification est acceptée. Ce comportement est cohérent avec la physique du problème : à température
+infinie, chaque particule a une énergie infinie, et donc est indifférente à sa configuration.
+
+\begin{figure}
+    \centering
+    \includegraphics[height=.25\textheight]{build/sca1_hksweep_huge_h20k20.png}
+    \includegraphics[height=.25\textheight]{build/sca2_hksweep_huge_h20k20.png}
+    \caption{Scalaires une experience à température infinie $(h, k) = (0, 0)$ pour une grille de
+    $N=128$, avec prise en compte des $n=1$ plus proches voisins et une décroissance en $a=1$.}
+    \label{fig:inf_en_sca}
+\end{figure}
+
 
 \bibliographystyle{alpha}
 \bibliography{rapport}
