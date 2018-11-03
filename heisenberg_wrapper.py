@@ -157,8 +157,8 @@ class HeisenbergManyLaunches:
             else:
                 self.HLs.append(HeisenbergLauncher(self.rootdircty + "trial_" + str(n),
                                                    self.latf, self.intf, self.scaf, self.ext))
-                self.HLs[-1].set_args(self.N, self.h, self.k, self.neighb,
-                                      self.a, self.t_max, self.t_lat, self.t_sca)
+            self.HLs[-1].set_args(self.N, self.h, self.k, self.neighb,
+                                    self.a, self.t_max, self.t_lat, self.t_sca)
             self.HLs[-1].make_or_clear_dir()
 
     def run(self):
