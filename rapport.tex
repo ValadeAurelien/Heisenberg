@@ -497,16 +497,27 @@ fluctuations, on considère :
     {E(0) - \left< E \right>_{\text{end}}} \right) < 1.
 \end{equation*}
 
+\paragraph{Erreur statistique.}
 On peut ensuite se poser la question de la corrélation temporelle : une longue expérience doit avoir
 un poids statistique plus fort qu'une expérience plus courte, le lier à l'erreur statistique est
 plus difficile. Une méthode pour estimer l'erreur est présentée en figure \ref{fig:err}. Elle
 consiste à découper récursivement une expérience en plusieurs sous-expériences de taille un demi, et
 de choisir l'ensemble de sous-expériences pour laquelle l'erreur statistique
 \begin{equation*}
-    \Sigma_N = \frac{\sigma}{\sqrt{N}}
+    \Sigma_N^\star = \frac{\sigma}{\sqrt{N}}
 \end{equation*}
 est la plus grande. Cela nous permet de savoir combien de sous-expériences ``indépendantes'' sont
 présentes dans chaque longue expérience.
+
+On définie aussi l'erreur statistique sur $N$ expériences indépendantes comme 
+\begin{equation*}
+    \Sigma_N = \frac{\sigma( \{ \bar{x} \} )}{\sqrt{N}}, \quad x \in \{m, q, e\},
+\end{equation*}
+c'est à dire l'écart type sur l'ensembles des moyennes obtenues divisée par la racine carrée du
+nombre d'expériences inépendantes. On pourrait combiner ces deux définitions en décomposant chaque
+expérience réelle en plusieurs sous-expériences \emph{a priori} décorrélées. Cepandant, comme on le
+verra plus loin, la définition de l'erreur statistique ne produit pas de bons résultats\footnote{Il
+s'agit plutôt de résultats que je ne comprends pas...}.  
 
 \begin{figure}
     \fbox{
@@ -558,23 +569,51 @@ On teste le code sur des configurations connues :
         température, pour $k=0, k<0$.
 \end{itemize}
 
+\subsection{Simple sampling}
+
+Une fois qu'on est sûr que les valeurs scalaires sont bien celles voulues, on tente d'explorer
+l'espace des phases par simple sampling. La figure \ref{fig:simple_sampling} montre les valeurs de
+$m, q$ obtenues pour une telle expérience. On obtient des valeurs centrées en $m=5\,10^{-5}$,
+$q=0.40$ avec un étalement $\sigma_m = \sigma_q = 10^{-1}$ pour 10000 expériences sur une grille de
+$N=128$. On ne couvre donc qu'une très faible portion des configurations accessibles : la partie
+précédente nous a montré qu'on pouvait accéder à des configurations telles que $m, q = 1$, etc. Ceci
+était tout à fait prédictible, sachant que pour un model d'Ising de taille équivalente il y a
+environs $10^{4900}$ configurations possibles et que le model XY étant continu, le nombre de d'état
+accessible est bien plus grand\footnote{Infiniment plus grand... Il faudrait plutôt passer par une
+approche continue pour pouvoir comparer, mais une telle analyse n'a pas été faite ici.}.
+
+\begin{figure}  
+    \centering
+    \includegraphics[height=.3\textheight]{build/MQ_simple.png}
+    \caption{Étalement des valeurs $m, q$ pour 10000 expériences, pour une grille de
+    $N=128$, avec prise en compte des $n=1$ plus proches voisins et une décroissance en $a=1$.}
+\end{figure}
+
+On note que les états initiaux utilisés dans la suite pour l'importance sampling sont issue des
+mêmes procédés aléatoires, la distribution présentée ci dessus est donc la distribution des états
+initiaux. Contrairement à ce que l'on pourrait penser donc, utiliser des configurations aléatoires
+comme configurations intiales ne permet de démarrer des simulations à partir de points distants de
+l'espace des phases, au contraire. Une discussion sur des états initiaux choisis pour être distants
+dans l'espaces des phases est mené dans la conclusion.
+
 \subsection{Experience à température infinie}
 
 Pour simuler une température infinie, on prend $(h, k) = (0, 0)$. Comme le montre la figure
 \ref{fig:inf_en_sca}, l'énergie relative reste donc nulle tout au long de l'expérience, toute
 modification est acceptée. La moyenne des spins et les couplages sont donc aléatoires. Ce
 comportement est cohérent avec la physique du problème : à température infinie, chaque particule a
-une énergie infinie, et donc est indifférente à sa configuration.
+une énergie infinie, et donc est indifférente à sa configuration. 
 
-Pour un ensemble de $1000$ expériences, la moyenne se stabilise autour de $m=3\,10^{-5}$, $q=0.405$, avec une erreur
-statistique de $\Sigma_m = 5\,10{-4}$, $\Sigma_q = 3\,10^{-4}$. 
+Pour un ensemble de $1000$ expériences, la moyenne se stabilise autour de $m=3\,10^{-5}$, $q=0.405$,
+avec une erreur statistique de $\Sigma_m = 5\,10^{-4}$, $\Sigma_q = 3\,10^{-4}$.
 
 \begin{figure}
     \centering
     \includegraphics[height=.25\textheight]{build/sca1_hksweep_huge_h20k20.png}
-    \includegraphics[height=.25\textheight]{build/sca2_hksweep_huge_h20k20.png}
-    \caption{Scalaires une experience à température infinie $(h, k) = (0, 0)$ pour une grille de
-    $N=128$, avec prise en compte des $n=1$ plus proches voisins et une décroissance en $a=1$.}
+    \includegraphics[height=.25\textheight]{build/MQ_very_high_temp.png}
+    \caption{Scalaires pour une experience à température infinie $(h, k) = (0, 0)$ pour une grille de
+    $N=128$, avec prise en compte des $n=1$ plus proches voisins et une décroissance en $a=1$. On a
+    pour cette réalisation $\Sigma_m^\star = 3\,10^{-4},~ \Sigma_q^\star = 1.5\,10^{-4}$.}
     \label{fig:inf_en_sca}
 \end{figure}
 
@@ -591,38 +630,46 @@ pouvait l'avoir avec la configuration \texttt{CHECKERBOARD} sans les interaction
     \includegraphics[height=.25\textheight]{build/corr_hksweep_huge_h20k20.png}
     \caption{Grille finale et fonction d'auto-corrélation radiale, une experience à température
     infinie $(h, k) = (0, 0)$ pour une grille de $N=128$, avec prise en compte des $n=1$ plus
-    proches voisins et une décroissance en $a=1$.} 
-    \label{fig:inf_en_sca}
+    proches voisins et une décroissance en $a=1$. } 
+    \label{fig:inf_en_corr}
 \end{figure}
 
-La fonction de correlation radiale est présentée en figure 7. On remarque une décroissance très
-rapide de la corrélation comme prévue. En revanche celle-ci ne semble pas suivre une loi exponentielle
-comme prédit par la théorie. Cela peut être lié au fait qu'à température infinie, il n'y a \emph{a
-priori} aucune correlation, comme on peut le voir sur les courbes, la fonction d'auto-corrélation
-tombe à sa valeur minimale dès $r=1$.
+La fonction de correlation radiale est présentée en figure \ref{fig:inf_en_corr}. On remarque une
+décroissance très rapide de la corrélation comme prévue. En revanche celle-ci ne semble pas suivre
+une loi exponentielle comme prédit par la théorie. Cela peut être lié au fait qu'à température
+infinie, il n'y a \emph{a priori} aucune correlation, comme on peut le voir sur les courbes, la
+fonction d'auto-corrélation tombe à sa valeur minimale dès $r=1$.
 
 \subsubsection{Expérience à haute température}
 
 On choisie arbitrairement $(h, k) = (0, 1)$ pour simuler une expérience à ``haute'' température sans
-polarité favorisée. Comme le montre la figure
-\ref{fig:high_en_sca}, on observe une convergence du couplage vers une valeur autre que sa valeur
-initiale : $m = 0$, $q=0.6$, avec $\Sigma_m = 1$, $\Sigma_q = 1$, ce qui prouve que la:
+polarité favorisée. Comme le montre la figure \ref{fig:high_en_sca}, on observe une convergence du
+couplage vers une valeur autre que sa valeur initiale : $m = -3\,10^{-5}$, $q=0.61$, avec $\Sigma_m
+= 2\,10^{-4}$, $\Sigma_q = 1\,10^{-4}$. Cependant on peut remarquer une oscillation moyenne de $q$
+notable autour de sa valeur moyenne, signe du fait qu'il y a à cette températures des fluctuations
+assez important (de l'ordre du pourcent). La forme du nuage de points de la figure
+\ref{fig:high_en_sca} nous permet de voir que $q$ est plus contraint que $m$ puisque le nuage est
+plus contracté verticalement qu'horizontalement, et c'est effectivement ce que nous disent les
+stastistiques : $\Sigma_q/ \Sigma_m \approx 2$. La magnétisation semble elle toujours non
+contrainte, puisque $\Sigma_m$ reste le même qu'à température infinie, mais on observe aussi que les
+variations sont plus lentes, il y donc bien une certaine contrainte. 
+
 
 \begin{figure}
     \centering
     \includegraphics[height=.25\textheight]{build/sca1_hksweep_huge_h20k22.png}
-    \includegraphics[height=.25\textheight]{build/sca2_hksweep_huge_h20k22.png}
+    \includegraphics[height=.25\textheight]{build/MQ_high_temp.png}
     \caption{Scalaires une experience à température infinie $(h, k) = (0, 0)$ pour une grille de
-    $N=128$, avec prise en compte des $n=1$ plus proches voisins et une décroissance en $a=1$.}
+    $N=128$, avec prise en compte des $n=1$ plus proches voisins et une décroissance en $a=1$. On a
+    pour cette réalisation $\Sigma_m^\star = 1\,10^{-3},~ \Sigma_q^\star = 3\,10^{-4}$.}
     \label{fig:high_en_sca}
 \end{figure}
 
-Comme attendu, la magnétisation moyenne est aux alentours de $0$, cependant le couplage oscile lui
-vers $0.4$. Ceci s'explique par le fait que l'on ne considère dans les plus proches voisins pas que
-les points $\{(i+1, j), (i, j+1), (i-1, j), (i, j-1)\}$, mais aussi les diagonales $\{(i+1, j+1),
-(i-1, j-1), (i+1, j-1), (i-1, j+1)\}$. Avec ces interactions, la valeur moyenne de couplage est non
-nulle. On note d'ailleurs qu'aucune configuration ne permet d'avoir un couplage $Q=-1$, comme on
-pouvait l'avoir avec la configuration \texttt{CHECKERBOARD} sans les interactions diagonales. 
+
+La fonction d'auto-corrélation radiale nous montre qu'il y a un peu de corrélation : sur un ou deux
+points. Cependant, il ne s'agit toujours pas d'une forme exponentielle comme attendu, la
+décroissance semble en effet trop rapide, puisque la courbe reste concave même en échelle
+semi-logarithmique. 
 
 \begin{figure}
     \centering
@@ -631,14 +678,52 @@ pouvait l'avoir avec la configuration \texttt{CHECKERBOARD} sans les interaction
     \caption{Grille finale et fonction d'auto-corrélation radiale, une experience à température
     infinie $(h, k) = (0, 0)$ pour une grille de $N=128$, avec prise en compte des $n=1$ plus
     proches voisins et une décroissance en $a=1$.} 
+    \label{fig:high_en_corr}
+\end{figure}
+
+
+\subsubsection{Experience à basse température}
+
+On choisie arbitrairement $(h, k) = (0, 1)$ pour simuler une expérience à ``haute'' température sans
+polarité favorisée. Comme le montre la figure \ref{fig:high_en_sca}, on observe une convergence du
+couplage vers une valeur autre que sa valeur initiale : $m = -3\,10^{-5}$, $q=0.61$, avec $\Sigma_m
+= 2\,10^{-4}$, $\Sigma_q = 1\,10^{-4}$. Cependant on peut remarquer une oscillation moyenne de $q$
+notable autour de sa valeur moyenne, signe du fait qu'il y a à cette températures des fluctuations
+assez important (de l'ordre du pourcent). La forme du nuage de points de la figure
+\ref{fig:high_en_sca} nous permet de voir que $q$ est plus contraint que $m$ puisque le nuage est
+plus contracté verticalement qu'horizontalement, et c'est effectivement ce que nous disent les
+stastistiques : $\Sigma_q/ \Sigma_m \approx 2$. La magnétisation semble elle toujours non
+contrainte, puisque $\Sigma_m$ reste le même qu'à température infinie, mais on observe aussi que les
+variations sont plus lentes, il y donc bien une certaine contrainte. 
+
+
+\begin{figure}
+    \centering
+    \includegraphics[height=.25\textheight]{build/sca1_hksweep_huge_h20k22.png}
+    \includegraphics[height=.25\textheight]{build/MQ_high_temp.png}
+    \caption{Scalaires une experience à température infinie $(h, k) = (0, 0)$ pour une grille de
+    $N=128$, avec prise en compte des $n=1$ plus proches voisins et une décroissance en $a=1$. On a
+    pour cette réalisation $\Sigma_m^\star = 1\,10^{-3},~ \Sigma_q^\star = 3\,10^{-4}$.}
     \label{fig:high_en_sca}
 \end{figure}
 
-La fonction de correlation radiale est présentée en figure 7. On remarque une décroissance très
-rapide de la corrélation comme prévue. En revanche celle-ci ne semble pas suivre une loi exponentielle
-comme prédit par la théorie. Cela peut être lié au fait qu'à température infinie, il n'y a \emph{a
-priori} aucune correlation, comme on peut le voir sur les courbes, la fonction d'auto-corrélation
-tombe à sa valeur minimale dès $r=1$.
+
+La fonction d'auto-corrélation radiale nous montre qu'il y a un peu de corrélation : sur un ou deux
+points. Cependant, il ne s'agit toujours pas d'une forme exponentielle comme attendu, la
+décroissance semble en effet trop rapide, puisque la courbe reste concave même en échelle
+semi-logarithmique. 
+
+\begin{figure}
+    \centering
+    \includegraphics[height=.25\textheight]{build/lattice_9900000_hksweep_huge_h20k22.png}
+    \includegraphics[height=.25\textheight]{build/corr_hksweep_huge_h20k22.png}
+    \caption{Grille finale et fonction d'auto-corrélation radiale, une experience à température
+    infinie $(h, k) = (0, 0)$ pour une grille de $N=128$, avec prise en compte des $n=1$ plus
+    proches voisins et une décroissance en $a=1$.} 
+    \label{fig:high_en_corr}
+\end{figure}
+
+
 
 
 \bibliographystyle{alpha}

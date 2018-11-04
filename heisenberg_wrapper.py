@@ -332,14 +332,14 @@ class HeisenbergPlot:
         self.scaf =   self.rootscaf
         self.argfile = argfile
         self.png = png
-        try:
-            self.read_args()
-        except:
-            pass
+        self.read_args()
 
 
     def read_args(self):
-        fargs = open(self.dircty + self.argfile).readlines()
+        try:
+            fargs = open(self.dircty + self.argfile).readlines()
+        except :
+            return ()
         args = [ line.split() for line in fargs ]
         self.N		= int(args[0][2])
         self.h		= float(args[1][2])
@@ -437,12 +437,17 @@ class HeisenbergPlot:
     def read_scalars(self):
         fsca = open(self.dircty + self.scaf + self.ext)
         header = fsca.readline().split()
-        self.header = [int(header[1]), int(header[2]),
-                       float(header[3]), float(header[4]),
-                       self.dircty];
+        try:
+            self.header = [int(header[1]), int(header[2]),
+                        float(header[3]), float(header[4]),
+                        self.dircty];
+        except:
+            return(True)
         fsca.close()
         self.scalars = np.loadtxt(self.dircty + self.scaf
                                   + self.ext).transpose()
+        if (self.scalars.shape == (0,)):
+            return (True)
         if (self.scalars.shape == (4,)):
             self.scalars = np.array([[x,x] for x in self.scalars])
 
@@ -747,22 +752,33 @@ class HeisenbergPlot:
                 self.dircty =  subdir + "/"
                 print("Processing : " + self.dircty)
                 self.read_args()
-                self.read_scalars()
+                if (self.read_scalars()):
+                    continue
                 self.many_stabs.append(self.stab)
                 self.many_scalars.append(self.scalars)
                 self.calc_stat()
                 self.stats[tuple(self.header)] = self.stat
         self.mean = np.mean([ s['mean'] for s in self.stats.values()],
                                axis=0, dtype=float)
-        self.serr = np.mean([ s['std'] for s in self.stats.values()],
+        self.serr = np.std([ s['mean'] for s in self.stats.values()],
                                axis=0, dtype=float)
-        self.serrn = len(self.stats.values())
-        self.serr /= np.sqrt(self.serrn)
+        self.serr /= np.sqrt(len([ s['mean'] for s in self.stats.values()]))
+        all_m, all_q, all_e = self.many_scalars[0][1:]
+        for sca in self.many_scalars[1:]:
+            all_m = np.concatenate((all_m, sca[1]))
+            all_q = np.concatenate((all_q, sca[2]))
+            all_e = np.concatenate((all_e, sca[3]))
+        all_scalars = np.array([all_m, all_q, all_e])
+        self.serr_1 = np.std(all_scalars, axis=0, dtype=float)
+        self.serrn_1 = len(self.many_scalars)
+        self.serr_1 /= np.sqrt(self.serrn_1)
         print("Analyse : \n"
-              "mean            : \t\t%-8g \t\t%-8g \t\t%-8g\n"
-              "statistical err : \t\t%-8g \t\t%-8g \t\t%-8g"%
+              "mean                : \t\t%-8g \t\t%-8g \t\t%-8g\n"
+              "statistical err     : \t\t%-8g \t\t%-8g \t\t%-8g\n"
+              "statistical err (1) : \t\t%-8g \t\t%-8g \t\t%-8g"%
               (self.mean[0], self.mean[1], self.mean[2],
-               self.serr[0], self.serr[1], self.serr[2]))
+               self.serr[0], self.serr[1], self.serr[2],
+               self.serr_1[0], self.serr_1[1], self.serr_1[2]))
 
     def plot_analyse(self):
         if (self.plot_stat == None ):
@@ -770,13 +786,16 @@ class HeisenbergPlot:
             self.fig_stat.suptitle("statistics")
             self.plot_stat = [[], [], []]
             for sca, stab in zip(self.many_scalars, self.many_stabs):
-                if self.stab != 0:
+                # if self.stab != 0:
+                if True:
                     step=int(np.ceil(len(sca[1, stab:])/100))
                     self.plot_stat[0] = self.ax_stat.scatter(sca[1, stab::step],
                                                              sca[2, stab::step])
+                    self.ax_stat.set_xlabel("M")
+                    self.ax_stat.set_ylabel("Q")
                     if (self.png):
-                        fig.savefig("MQ_" + format_rtd(self.rootdircty)
-                                    + ".png")
+                        self.fig_stat.savefig("MQ_" + format_rtd(self.rootdircty)
+                                              + ".png")
 
 if __name__ == "__main__":
     import argparse as ap
