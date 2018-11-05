@@ -437,17 +437,14 @@ class HeisenbergPlot:
     def read_scalars(self):
         fsca = open(self.dircty + self.scaf + self.ext)
         header = fsca.readline().split()
-        try:
-            self.header = [int(header[1]), int(header[2]),
-                        float(header[3]), float(header[4]),
-                        self.dircty];
-        except:
-            return(True)
+        self.header = [int(header[1]), int(header[2]),
+                       float(header[3]), float(header[4]),
+                       self.dircty];
         fsca.close()
         self.scalars = np.loadtxt(self.dircty + self.scaf
                                   + self.ext).transpose()
         if (self.scalars.shape == (0,)):
-            return (True)
+            a = 1/0.
         if (self.scalars.shape == (4,)):
             self.scalars = np.array([[x,x] for x in self.scalars])
 
@@ -630,18 +627,18 @@ class HeisenbergPlot:
                 fig_corr.savefig("corr_" + format_rtd(self.rootdircty)
                                  + ".png")
 
-    def plot_hsweep_vs_h(self):
+    def plot_hsweep_vs_k(self):
         ks = np.unique( np.sort( [ head[3] for head in self.stats ] ) )
         hs_x = np.unique( np.sort( [ head[2] for head in self.stats ] ) )
-        hs_y_mean_Ms= [[0 for h in hs_x] for h in hs]
-        hs_y_mean_Qs= [[0 for h in hs_x] for h in hs]
-        hs_y_mean_Es= [[0 for h in hs_x] for h in hs]
-        hs_y_std_Ms= [[0 for h in hs_x] for h in hs]
-        hs_y_std_Qs= [[0 for h in hs_x] for h in hs]
-        hs_y_std_Es= [[0 for h in hs_x] for h in hs]
-        hs_y_serr_Ms= [[0 for h in hs_x] for h in hs]
-        hs_y_serr_Qs= [[0 for h in hs_x] for h in hs]
-        hs_y_serr_Es= [[0 for h in hs_x] for h in hs]
+        hs_y_mean_Ms= [[0 for h in hs_x] for k in ks]
+        hs_y_mean_Qs= [[0 for h in hs_x] for k in ks]
+        hs_y_mean_Es= [[0 for h in hs_x] for k in ks]
+        hs_y_std_Ms= [[0 for h in hs_x] for k in ks]
+        hs_y_std_Qs= [[0 for h in hs_x] for k in ks]
+        hs_y_std_Es= [[0 for h in hs_x] for k in ks]
+        hs_y_serr_Ms= [[0 for h in hs_x] for k in ks]
+        hs_y_serr_Qs= [[0 for h in hs_x] for k in ks]
+        hs_y_serr_Es= [[0 for h in hs_x] for k in ks]
         for head, stat in self.stats.items() :
             i = np.where( ks==head[3] )[0][0]
             j = np.where( hs_x==head[2] )[0][0]
@@ -657,7 +654,7 @@ class HeisenbergPlot:
         self.fig_hsweep, self.ax_hsweep = plt.subplots(3, 1)
         self.fig_hsweep.suptitle("h-sweep")
         self.plot_hsweep = [[], [], []]
-        for i in range(len(hs)):
+        for i in range(len(ks)):
             print(hs_y_mean_Qs[i])
             # self.plot_hsweep[0].append(self.ax_hsweep[0].plot(hs_x,
                                                               # hs_y_mean_Ms[i],
@@ -672,15 +669,15 @@ class HeisenbergPlot:
             self.plot_hsweep[0].append(self.ax_hsweep[0].errorbar(hs_x,
                                                                   hs_y_mean_Ms[i],
                                                                   hs_y_serr_Ms[i],
-                                                                  label="h = %.1f"%(hs[i])))
+                                                                  label="h = %.1f"%(ks[i])))
             self.plot_hsweep[1].append(self.ax_hsweep[1].errorbar(hs_x,
                                                                   hs_y_mean_Qs[i],
                                                                   hs_y_serr_Qs[i],
-                                                                  label="h = %.1f"%(hs[i])))
+                                                                  label="h = %.1f"%(ks[i])))
             self.plot_hsweep[2].append(self.ax_hsweep[2].errorbar(hs_x,
                                                                   hs_y_mean_Es[i],
                                                                   hs_y_serr_Es[i],
-                                                                  label="h = %.1f"%(hs[i])))
+                                                                  label="h = %.1f"%(ks[i])))
 
             if (self.png):
                 fig_hsweep.savefig("hsweep_" + format_rtd(self.rootdircty)
@@ -752,7 +749,9 @@ class HeisenbergPlot:
                 self.dircty =  subdir + "/"
                 print("Processing : " + self.dircty)
                 self.read_args()
-                if (self.read_scalars()):
+                try :
+                    self.read_scalars()
+                except :
                     continue
                 self.many_stabs.append(self.stab)
                 self.many_scalars.append(self.scalars)

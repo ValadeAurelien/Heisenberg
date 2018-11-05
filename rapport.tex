@@ -39,7 +39,7 @@
 \DeclareMathOperator\argmin{argmin}
 \DeclareMathOperator\argmax{argmax}
 
-\title{Simulation du modèle XY par méthode Monté-Carlo \medskip \\ 
+\title{Simulation du modèle XY par méthode Monté Carlo \medskip \\ 
        \Large Rapport de projet pour le cours de Computationnal Statistical Physics }
 \author{Aurélien Valade}
 \date{}
@@ -55,7 +55,7 @@ La physique statistique est l'étude des comportements systèmes macroscopiques 
 microscopiques dont les propriétés sont connues. On va donc systématiquement s'intéresser à un grand
 nombre de particules en interactions, ce qui est complexe à représenter mathématiquement sans faire
 approximation de continuité, de champ moyen, etc. Ainsi, les comportements de nombreux modèles de
-physique statistique ne sont pas discriptibles analytiquement pour des cas pourtant pertinents.  Si
+physique statistique ne sont pas descriptibles analytiquement pour des cas pourtant pertinents.  Si
 une résolution analytique n'est pas possible, il faut travailler avec des valeurs numériques, comme
 cela a par exemple était fait pendant la seconde guerre mondiale pour les calculs portant sur la
 bombe atomique, ou encore en astrophysique pour des calculs de trajectoires.  Cependant la quantité
@@ -88,27 +88,29 @@ bidimensionnel). Il est caractérisés par deux paramètres d'ordre : un ordre m
 positionnement à courte portée et un ordre orientationnel à longue portée
 \cite{wiki:phase_hexatique}.}.
 
-Nous allons dans un premier temps présenter le problème dans sa formulation physique.
+Nous allons dans un premier temps présenter le problème dans sa formulation physique. Nous verrons
+ensuite les procédures et algorithmes utilisés et nous étudierons enfin quelques résultats produits.
  
 \section{Modèle physique}
 
 \subsection{Description du modèle}
 
 Soit un ensemble de particules arrangées sur une grille carrée de taille $N\times N$. On note la
-position $\vr{ij}$ pour la particule de la ligne $0 \le i < N$ et la colonne $0 \le j < N$. On
-utilise aussi l'indiciation des particules $0 \le I < N\times N$ où la position spiatiale n'apparaît
-pas explicitement bien qu'on puisse définir $I = i\times N +j$.
+position dans l'espace $\vr{ij}$ pour la particule de la ligne $0 \le i < N$ et la colonne $0 \le j
+< N$. On utilise aussi l'indexage des particules $0 \le I < N\times N$ dans les cas où connaître la
+position dans l'espace n'est pas nécessaire bien qu'on puisse définir $I = i\times N +j$ et lier les
+deux systèmes d'indexage. 
 
 Ces particules ont une propriété appelée spin que l'on peut lier à l'angle entre la normale au plan
-et un axe intrinsèque à la particule. On note cet angle $\theta_{ij} \in [0, \pi]$. On peut alors
-définir le spin de chaque particule $\sigma_{ij} = \cos(\theta_{ij})$. On considère que ces
-particules interagissent entre elles à travers leur spin, et qu'il existe un champ exterieur avec
-lequel ces spin tendent à s'aligner. Le Hamilonien décrivant l'énergie d'un tel système s'écrit
-alors : 
+et un axe intrinsèque à la particule. On note cet angle $\theta_{ij} \in [0, \pi]$. Dans notre
+modèle, le spin de chaque particule est alors tout simplement le cosinus de l'angle :$\sigma_{ij} =
+\cos(\theta_{ij})$.  On considère que ces particules interagissent entre elles à travers leur spin,
+et qu'il existe un champ extérieur avec lequel ces spin tendent à s'aligner. Le Hamilonien décrivant
+l'énergie d'un tel système s'écrit alors : 
 \begin{equation}
     \begin{aligned}  
         H &= - k \underbrace{\sum_{I, I'} J_{II'} \cos(\theta_I-\theta_{I'})}_{\text{interactions}} 
-        - h \underbrace{\sum_I \cos(\theta_I) }_{\text{champ exterieur}} \\
+        - h \underbrace{\sum_I \cos(\theta_I) }_{\text{champ extérieur}} \\
           &= -k Q - h M \\
     \end{aligned}
 \end{equation}
@@ -135,22 +137,24 @@ concrets. La valeur de $h$ représente l'intensité du champ externe auquel les 
 s'aligner, et $k$ modélise la force du couplage entre les spins. Pour un modèle magnétique, $k>0$
 signifie que le matériau est ferromagnétique : les spins cherchent à pointer dans la même direction
 et $k>0$ représente un matériau paramagnétique : les spins cherchent à pointer dans une direction
-opposée à celle de leurs voisins. Ces quantités ont été préalablement adimensionnées, et dérivent de
-termes de la forme $h=h'/(\kb T)$, $k = k'/(\kb T)$ où $\kb$ est la constante de Boltzmann et $T$ la
-température. C'est donc à travers ces paramètres qu'on peut jouer sur la température pour observer
-les transitions de phase, etc. 
+opposée à celle de leurs voisins. Il faut cependant préciser que le cas paramagnétique de ce modèle
+n'a pas d'application physique et nous intéresse donc moins. Ces quantités ont été préalablement
+adimensionnées, et dérivent de termes de la forme $h=h'/(\kb T)$, $k = k'/(\kb T)$ où $\kb$ est la
+constante de Boltzmann et $T$ la température. C'est donc à travers ces paramètres qu'on peut jouer
+sur la température pour observer les transitions de phase, etc. 
 
 \subsection{Comportement prédit}
 
 A haute température les paramètres $h$ et $k$ du système sont très faibles, le Hamiltonien résultant
-est donc quasi-nul et n'a pas de minimum significatif. Il n'y a pas d'état qui puisse réellement
-minimiser l'énergie, tous sont donc équiprobaux, il en résulte que la magnétisation ainsi que le
-couplage sont nuls en moyenne.
+est donc quasi-nul et n'a pas de minimum significatif. Il n'y a pas de configuration qui puisse
+réellement minimiser l'énergie, toutes sont donc équiprobables, il en résulte que la magnétisation
+est nulle en moyenne et que le couplage est à une valeur moyenne non toujours nulle discutée plus
+loin et dépendante du modèle. 
 
 À basse température, le comportement du modèle XY est différent du modèle d'Ising. Tout d'abord, lors
 de la transition de phase, on n'observe pas de brisure de symétrie spatiale. A champs magnétique
 externe nul $h=0$, lors d'une trempe (\emph{i.e.} lors qu'on abaisse progressivement la température du
-système), la magnétisation reste nulle. En revanche, en présence d'un champ externe, la symmétrie du
+système), la magnétisation reste nulle. En revanche, en présence d'un champ externe, la symétrie du
 système étant déjà brisée, et les spins s'alignent effectivement avec ce champ. 
 
 On observe à la transition de phase un changement globale de comportement de la fonction de corrélation
@@ -172,19 +176,19 @@ alors qu'à basse température, on s'attend à trouver une fonction qui décroî
 \section{Implémentation}
 
 Le but de ce travail est de fournir un programme puissant, flexible, et aisément utilisable qui
-permette de simuler et d'analyser un modèle XY classique par une méthode Monté-Carlo. Il doit
+permette de simuler et d'analyser un modèle XY classique par une méthode Monté Carlo. Il doit
 notamment utiliser un système de production, de stockage et d'analyse des données cohérent qui
-permette de reproduire chaque experience. Il faut donc notamment ne pas écraser les données au fur
+permette de reproduire chaque expérience. Il faut donc notamment ne pas écraser les données au fur
 et à mesure qu'elles sont produite, mais il faut en plus garder des traces des paramètres associés à
-chaque experience produite, ainsi que des conventions de nomages compréhensibles et cohérentes.
+chaque expérience produite, ainsi que des conventions de nommage compréhensibles et cohérentes.
 
 \subsection{Structure du code et des scipts}
 
 Le code produit se décompose en deux parties distinctes :
 \begin{itemize}
-    \item le code principal d'environs 500 lignes, écrit en C  : il produit les données pour une expérience
+    \item le code principal d'environs 600 lignes, écrit en C  : il produit les données pour une expérience
         et les stocke dans un dossier ;
-    \item et un code de scirpting écrit en Python d'environs 600 lignes : celui ci permet d'appeler le code C avec
+    \item et un code de scirpting écrit en Python d'environs 1000 lignes : celui ci permet d'appeler le code C avec
         les bons paramètres puis d'exploiter les données qui en résultent.
 \end{itemize}
 
@@ -192,12 +196,12 @@ Le code produit se décompose en deux parties distinctes :
 
 \subsubsection{Entrés et sorties}
 
-Chaque expérience est lancée avec la connaissance des paramêtres suivant :
+Chaque expérience est lancée avec la connaissance des paramètres suivant :
 \begin{itemize}
     \item $N$ la taille de grille ;
-    \item $n$ le nombre de plus proches voisins à considérer pour les intéractions ;
-    \item $a$ l'exposant de la fonction de décroissance pour les intéractions ;
-    \item $h$ la force du champ exterieur ;
+    \item $n$ le nombre de plus proches voisins à considérer pour les interactions ;
+    \item $a$ l'exposant de la fonction de décroissance pour les interactions ;
+    \item $h$ la force du champ extérieur ;
     \item $k$ la force de couplage entre spins ;
     \item le type d'initialisation :
         \begin{itemize}
@@ -207,7 +211,7 @@ Chaque expérience est lancée avec la connaissance des paramêtres suivant :
             \item \texttt{RANDOM} : $\theta_{I}= U([0, \pi])$ pour tout $I$ avec $U$ la loi
                 uniforme. 
         \end{itemize}
-    \item le type de Monte-Carlo : \texttt{METROPOLIS}  ou \texttt{GLAUBER}.
+    \item le type de Monté Carlo : \texttt{METROPOLIS}  ou \texttt{GLAUBER}.
     \item Ainsi que le nombre de pas, la fréquence de sauvegarde des différentes données et le
         répertoire où les stocker.
 \end{itemize}
@@ -221,9 +225,9 @@ En sortie, le programme fournit les données suivantes :
         $Q_I$ de la grille.
 \end{itemize}
 
-\subsubsection{Definition des quantités numériques}
+\subsubsection{Définition des quantités numériques}
 
-Les quantités physiques introduites prédemment sont définies numériquement comme suit :
+Les quantités physiques introduites précédemment sont définies numériquement comme suit :
 \paragraph{Magnétisation.}
 La définition de la magnétisation est similaire à sa définition physique : 
 \[
@@ -234,7 +238,7 @@ On introduit la matrice de couplage normalisée telle que
 \begin{equation*}
     \hat{J}_{II'} = \frac{J_{II'}}{\sum_{KK'} J_{KK'} }.
 \end{equation*}
-Cette définition permet de garder un couplage indépendant du nombre de voisins considérés.  En
+Cette définition permet de garder un couplage ``indépendant'' du nombre de voisins considérés.  En
 effet, en absence de normalisation, pour une configuration donnée, l'énergie de couplage de chaque
 particule grandit fortement avec le nombre de plus proches voisins considérés, ce qui peut s'avérer
 gênant pour comparer des simulations à $n$ différent.  On introduit ensuite le couplage local 
@@ -252,19 +256,20 @@ $Q \in [-N\times N, N \times N]$.
     E = -k Q - h M.
 \end{equation*}
 
-\paragraph{Quantitées réduites.} Pour pouvoir comparer des experiences dont la taille de la grille
+\paragraph{Quantités réduites.} Pour pouvoir comparer des expériences dont la taille de la grille
 diffère, on utilise les valeurs réduites :
 \begin{equation*}
     m = M / N^2, \quad q = Q / N^2, \quad e = E / N^2.
 \end{equation*}
 Ces valeurs sont particulièrement stables puisqu'on a $m,q \in [-1, 1]$ et $e \in [-|h|-|k|,
-|h|+|k|]$ pour toute expérience, quelque soient ses paramètres. 
+|h|+|k|]$ pour toute expérience, quelque soient ses paramètres. On n'utilisera uniquement ces
+valeurs dans la suite.
 
 
 \subsubsection{Algorithmes utilisés}
 
 Après initialisation des différentes parties du code, on procède à l'exploration de l'espace des
-phases par méthode de Monté-Carlo comme vue en cours. À chaque itération, une cellule de la grille
+phases par méthode de Monté Carlo comme vue en cours. À chaque itération, une cellule de la grille
 est choisie au hasard à laquelle on assigne un angle aléatoire. On recalcule l'énergie de la
 nouvelle configuration. On propose ensuite deux méthodes
 \begin{itemize}
@@ -274,7 +279,7 @@ nouvelle configuration. On propose ensuite deux méthodes
         E)$, sinon elle est rejetée.
 \end{itemize}
 
-La procédure est décrite en pseudo-code dans la figure \ref{fig:update}.
+La procédure est décrite en pseudo code dans la figure \ref{fig:update}.
 \begin{figure}[h]
     \fbox{
     \begin{minipage}[]{\textwidth}
@@ -321,15 +326,15 @@ La procédure est décrite en pseudo-code dans la figure \ref{fig:update}.
     \label{fig:update}
 \end{figure}
 
-Une fois le spin d'une particule mis à jour, il faut mettre à jour toutes les quantitées, a savoir
-$M$, $Q$ et $E$. Il s'agit de la partie du code qui demande le plus de calcul. Plus précisément,
-c'est le calcul du couplage qui est le plus lourd, et l'est d'autant plus que l'on considère les
-actions à longue distance.
+Une fois le spin d'une particule mis à jour, il faut mettre à jour toutes les quantités scalaires, à
+savoir $M$, $Q$ et $E$. Il s'agit de la partie du code qui demande le plus de calcul. Plus
+précisément, c'est le calcul du couplage qui est le plus lourd, et l'est d'autant plus que l'on
+considère les actions à longue distance.
 
-Une approche naive serait de changer recalculer la magnétisation et du couplage après chaque
-modification sur toute la grille ; une telle approche serait de complexité $\mathcal{O}(n^2\times
-N^2)$.  Une meilleur algorithme, celui-ci en $\mathcal{O}(n^2)$ est décrit en figure \ref{fig:calc}.
-L'idée consiste à ne recalculer que la partie de grille affectée par le changement et de reporter
+Une approche naïve serait de recalculer la magnétisation et le couplage après chaque modification
+sur toute la grille ; une telle approche serait de complexité $\mathcal{O}(n^2\times N^2)$.  Une
+meilleur algorithme, celui-ci en $\mathcal{O}(n^2)$, est décrit en figure \ref{fig:calc}.  L'idée
+consiste à ne recalculer que la partie de grille affectée par le changement et de reporter
 directement les modifications sur les scalaires $M$ et $Q$. Le poids final de chaque opération est
 reporté en figure \ref{fig:perfdata}.
 
@@ -356,10 +361,10 @@ reporté en figure \ref{fig:perfdata}.
             \State $Q \gets Q - p + q$
             \Comment{Mise à jour du couplage}
             \State $E \gets -k Q -h M$
-            \Comment{Calcul de l'energie}
+            \Comment{Calcul de l'énergie}
         \end{algorithmic}
     \end{minipage}}
-    \caption{Procédure de mise à jour de l'énergie en pseudo-code.}
+    \caption{Procédure de mise à jour de l'énergie en pseudo code.}
     \label{fig:calc}
 \end{figure}
 
@@ -385,7 +390,7 @@ reporté en figure \ref{fig:perfdata}.
     \texttt{calc\_all\_one\_change} est décrite en \ref{fig:calc}. Les fonctions \texttt{get\_*} ne
     servent qu'à lire les valeurs des différents tableaux, \texttt{add\_inter} ajoute une valeur
     donnée sur une partie de la grille des couplages locaux, et \texttt{periodic\_conditions} fait
-    la transformation d'indice qui simule les conditions periodiques. }
+    la transformation d'indice qui simule les conditions périodiques. }
     \label{fig:perfdata}
 \end{figure}
 
@@ -397,10 +402,10 @@ Ce script est un ``wrapper'' du code principal. Il simplifie l'appel par le nomm
 par le passage des valeurs par défaut, etc\footnote{On utilise le package python \texttt{argparse}
 pour le passage des arguments, plus simple à gérer que les fonctions POSIX en C.}.
 
-Il permet aussi de lancer plusieurs types d'experiences :
+Il permet aussi de lancer plusieurs types d'expériences :
 \begin{itemize}
     \item \textbf{Simple sampling.} Le script permet alors de nommer automatiquement les dossiers de
-        stockage, lance bien sûr automatiquement les $N_\text{simple}$ experiences et compiles tous
+        stockage, lance bien sûr automatiquement les $N_\text{simple}$ expériences et compile tous
         les fichiers de scalaires en un seul pour une analyse postérieur. Le programme principal est
         appelé avec un nombre d'itérations à faire nul. Il s'initialise donc avec une grille
         aléatoire, calcul son énergie, enregistre la grille ainsi que ses valeurs scalaire et
@@ -409,30 +414,29 @@ Il permet aussi de lancer plusieurs types d'experiences :
         simulation pour chaque valeur. Contrairement à ce qui était prévu initialement, on se
         concentre sur des ensembles de couples $(h, k)$ : on peut donc lancer automatiquement 
         $n_h\times n_k$ simulation avec $\{(h_i, k_j)\}_{h_0 < \hdots < h_{n_h}, k_0 < \hdots < k_{n_k}}$.
-        En plus de lancer les experiences automatiquement, le script nomme automatiquement les
-        dossiers de stockages. 
+        En plus de lancer les expériences automatiquement, le script nomme automatiquement les
+        dossiers de stockage. 
     \item \textbf{Parallel sweep.} Même chose pour que pour le sweep, mais les intances du code
-        principale s'executent en parallèle. Autant de processus qu'il y a de simulations à faire
-        sont créés, et on laisse l'OS partager le calcul, ce qui n'est pas optimal mais qui est plus
-        rapide à mettre en place. 
+        principale s'executent en parallèle. On lance les processus en parallèle par grappe de
+        $n_\text{par}$, on attend que tous aient fini, et on lance la grappe suivante.
 \end{itemize}
 
 
 \subsubsection{Scipts d'analyse des données}
 
-Ces scripts prennent des dossiers de données formattés par les scripts de lancement présentés
-précedemment. Pour une seule experience, plusieurs visualisations sont possibles :
+Ces scripts prennent des dossiers de données formatés par les scripts de lancement présentés
+précédemment. Pour une seule expérience, plusieurs visualisations sont possibles :
 \begin{itemize}
     \item Tracé des scalaires $m$, $q$ et $e$ en fonction du nombre d'itération ;
     \item Tracé de $q$ en fonction de $m$ ;
     \item Tracé de grilles $\theta_{ij}$ (une seule, un ensemble, toutes, la dernière), si
         plusieurs grilles sont demandées, elles sont affichées sous forme d'une film à 5 fps par
-        défault ;
+        défaut ;
     \item Tracé de la fonction de d'auto-corrélation radiale $C(r)$.
 \end{itemize}
 
-\paragraph{Fonction d'autocorrelation.} La fonction de d'auto-correlation radiale peut être vue
-comme la moyenne des correlations 
+\paragraph{Fonction d'auto-corrélation.} La fonction de d'auto-corrélation radiale peut être vue
+comme la moyenne des corrélations 
 \begin{equation}
     \begin{aligned}
         C(r) &= \left< \sigma_i \sigma_j\right>_{i^2+j^2=r^2} 
@@ -471,18 +475,18 @@ $R^2$ pour essayer d'observer une transition de comportement.
                 \State push\_item($X$, $\sqrt{i^2+j^2}$)
                 \Comment{Calcul du rayon}
                 \State $ S^{(++)} \, = $ prod\_shift(lattice,$ i, j$)
-                \Comment{Correlations par direction}
+                \Comment{corrélations par direction}
                 \State $ S^{(+-)} \, = $ prod\_shift(lattice,$ i, -j$)
                 \State $ S^{(-+)} \, = $ prod\_shift(lattice,$ -i, j$)
                 \State $ S^{(--)} \, = $ prod\_shift(lattice,$ -i, -j$)
                 \State push\_item$\left( Y, \text{sum}\left( \frac{S^{(++)} + S^{(+-)} + S^{(-+)} +
                 S^{(--)}}{4 N^2} \right)\right)$
-                \Comment{Moyenne des correlations directionnelles}
+                \Comment{Moyenne des corrélations directionnelles}
             \EndFor
             \State $X, Y \gets $ abs\_sort($X,Y$)
         \end{algorithmic}
     \end{minipage}}
-    \caption{Procédure de calcul de la fonction d'autocorrelation.}
+    \caption{Procédure de calcul de la fonction d'auto-corrélation en pseudo code.}
     \label{fig:corr}
 \end{figure}
 
@@ -490,7 +494,7 @@ $R^2$ pour essayer d'observer une transition de comportement.
 place. Il s'agit de moyenner les $m$ derniers points de $E(t)$, et de noter la première fois que
 cette valeur est atteinte. Cette heuristique se base sur le fait que l'énergie est globalement
 décroissante si $(h,k)$, et qu'elle converge donc vers sa valeur finale, moyennant fluctuations.
-Pour éviter les problèmes d'égalités entre nombres flottants et pour tenir compte desdites
+Pour éviter les problèmes d'égalités entre nombres flottants et pour tenir compte des dites
 fluctuations, on considère :
 \begin{equation*}
     t_{\text{stab}} = \min t \text{~t.q.~} \left( \frac{\left< E \right>_{\text{end}} - E(t)}
@@ -513,9 +517,9 @@ On définie aussi l'erreur statistique sur $N$ expériences indépendantes comme
 \begin{equation*}
     \Sigma_N = \frac{\sigma( \{ \bar{x} \} )}{\sqrt{N}}, \quad x \in \{m, q, e\},
 \end{equation*}
-c'est à dire l'écart type sur l'ensembles des moyennes obtenues divisée par la racine carrée du
-nombre d'expériences inépendantes. On pourrait combiner ces deux définitions en décomposant chaque
-expérience réelle en plusieurs sous-expériences \emph{a priori} décorrélées. Cepandant, comme on le
+c'est à dire l'écart type sur l'ensemble des moyennes obtenues divisée par la racine carrée du
+nombre d'expériences indépendantes. On pourrait combiner ces deux définitions en décomposant chaque
+expérience réelle en plusieurs sous-expériences \emph{a priori} décorrélées. Cependant, comme on le
 verra plus loin, la définition de l'erreur statistique ne produit pas de bons résultats\footnote{Il
 s'agit plutôt de résultats que je ne comprends pas...}.  
 
@@ -573,12 +577,12 @@ On teste le code sur des configurations connues :
 
 Une fois qu'on est sûr que les valeurs scalaires sont bien celles voulues, on tente d'explorer
 l'espace des phases par simple sampling. La figure \ref{fig:simple_sampling} montre les valeurs de
-$m, q$ obtenues pour une telle expérience. On obtient des valeurs centrées en $m=5\,10^{-5}$,
+$m, q$ obtenues pour une telle expérience. On obtient des valeurs centrées en $m=5\cdot10^{-5}$,
 $q=0.40$ avec un étalement $\sigma_m = \sigma_q = 10^{-1}$ pour 10000 expériences sur une grille de
 $N=128$. On ne couvre donc qu'une très faible portion des configurations accessibles : la partie
 précédente nous a montré qu'on pouvait accéder à des configurations telles que $m, q = 1$, etc. Ceci
-était tout à fait prédictible, sachant que pour un model d'Ising de taille équivalente il y a
-environs $10^{4900}$ configurations possibles et que le model XY étant continu, le nombre de d'état
+était tout à fait prévisible, sachant que pour un modèle d'Ising de taille équivalente il y a
+environs $10^{4900}$ configurations possibles et que le modèle XY étant continu, le nombre de d'état
 accessible est bien plus grand\footnote{Infiniment plus grand... Il faudrait plutôt passer par une
 approche continue pour pouvoir comparer, mais une telle analyse n'a pas été faite ici.}.
 
@@ -589,14 +593,13 @@ approche continue pour pouvoir comparer, mais une telle analyse n'a pas été fa
     $N=128$, avec prise en compte des $n=1$ plus proches voisins et une décroissance en $a=1$.}
 \end{figure}
 
-On note que les états initiaux utilisés dans la suite pour l'importance sampling sont issue des
+On note que les états initiaux utilisés dans la suite pour l'importance sampling sont issus des
 mêmes procédés aléatoires, la distribution présentée ci dessus est donc la distribution des états
 initiaux. Contrairement à ce que l'on pourrait penser donc, utiliser des configurations aléatoires
-comme configurations intiales ne permet de démarrer des simulations à partir de points distants de
-l'espace des phases, au contraire. Une discussion sur des états initiaux choisis pour être distants
-dans l'espaces des phases est mené dans la conclusion.
+comme configurations initiales ne permet de démarrer des simulations à partir de points distants de
+l'espace des phases, au contraire. 
 
-\subsection{Experience à température infinie}
+\subsection{Expérience à température infinie, sans polarité favorisée}
 
 Pour simuler une température infinie, on prend $(h, k) = (0, 0)$. Comme le montre la figure
 \ref{fig:inf_en_sca}, l'énergie relative reste donc nulle tout au long de l'expérience, toute
@@ -604,53 +607,53 @@ modification est acceptée. La moyenne des spins et les couplages sont donc alé
 comportement est cohérent avec la physique du problème : à température infinie, chaque particule a
 une énergie infinie, et donc est indifférente à sa configuration. 
 
-Pour un ensemble de $1000$ expériences, la moyenne se stabilise autour de $m=3\,10^{-5}$, $q=0.405$,
-avec une erreur statistique de $\Sigma_m = 5\,10^{-4}$, $\Sigma_q = 3\,10^{-4}$.
+Pour un ensemble de $1000$ expériences, la moyenne se stabilise autour de $m=3\cdot10^{-5}$, $q=0.405$,
+avec une erreur statistique de $\Sigma_m = 5\cdot10^{-4}$, $\Sigma_q = 3\cdot10^{-4}$.
 
 \begin{figure}
     \centering
     \includegraphics[height=.25\textheight]{build/sca1_hksweep_huge_h20k20.png}
     \includegraphics[height=.25\textheight]{build/MQ_very_high_temp.png}
-    \caption{Scalaires pour une experience à température infinie $(h, k) = (0, 0)$ pour une grille de
+    \caption{Scalaires pour une expérience à température infinie $(h, k) = (0, 0)$ pour une grille de
     $N=128$, avec prise en compte des $n=1$ plus proches voisins et une décroissance en $a=1$. On a
-    pour cette réalisation $\Sigma_m^\star = 3\,10^{-4},~ \Sigma_q^\star = 1.5\,10^{-4}$.}
+    pour cette réalisation $\Sigma_m^\star = 3\cdot10^{-4},~ \Sigma_q^\star = 1.5\cdot10^{-4}$.}
     \label{fig:inf_en_sca}
 \end{figure}
 
-Comme attendu, la magnétisation moyenne est aux alentours de $0$, cependant le couplage oscile lui
+Comme attendu, la magnétisation moyenne est aux alentours de $0$, cependant le couplage oscille lui
 vers $0.4$. Ceci s'explique par le fait que l'on ne considère dans les plus proches voisins pas que
 les points $\{(i+1, j), (i, j+1), (i-1, j), (i, j-1)\}$, mais aussi les diagonales $\{(i+1, j+1),
 (i-1, j-1), (i+1, j-1), (i-1, j+1)\}$. Avec ces interactions, la valeur moyenne de couplage est non
-nulle. On note d'ailleurs qu'aucune configuration ne permet d'avoir un couplage $Q=-1$, comme on
+nulle. On note d'ailleurs qu'aucune configuration ne permet d'avoir un couplage $q=-1$, comme on
 pouvait l'avoir avec la configuration \texttt{CHECKERBOARD} sans les interactions diagonales. 
 
 \begin{figure}
     \centering
     \includegraphics[height=.25\textheight]{build/lattice_9900000_hksweep_huge_h20k20.png}
     \includegraphics[height=.25\textheight]{build/corr_hksweep_huge_h20k20.png}
-    \caption{Grille finale et fonction d'auto-corrélation radiale, une experience à température
+    \caption{Grille finale et fonction d'auto-corrélation radiale, une expérience à température
     infinie $(h, k) = (0, 0)$ pour une grille de $N=128$, avec prise en compte des $n=1$ plus
     proches voisins et une décroissance en $a=1$. } 
     \label{fig:inf_en_corr}
 \end{figure}
 
-La fonction de correlation radiale est présentée en figure \ref{fig:inf_en_corr}. On remarque une
+La fonction de corrélation radiale est présentée en figure \ref{fig:inf_en_corr}. On remarque une
 décroissance très rapide de la corrélation comme prévue. En revanche celle-ci ne semble pas suivre
 une loi exponentielle comme prédit par la théorie. Cela peut être lié au fait qu'à température
-infinie, il n'y a \emph{a priori} aucune correlation, comme on peut le voir sur les courbes, la
+infinie, il n'y a \emph{a priori} aucune corrélation, comme on peut le voir sur les courbes, la
 fonction d'auto-corrélation tombe à sa valeur minimale dès $r=1$.
 
-\subsubsection{Expérience à haute température}
+\subsubsection{Expérience à haute température, sans polarité favorisée }
 
-On choisie arbitrairement $(h, k) = (0, 1)$ pour simuler une expérience à ``haute'' température sans
+On choisit arbitrairement $(h, k) = (0, 1)$ pour simuler une expérience à ``haute'' température sans
 polarité favorisée. Comme le montre la figure \ref{fig:high_en_sca}, on observe une convergence du
-couplage vers une valeur autre que sa valeur initiale : $m = -3\,10^{-5}$, $q=0.61$, avec $\Sigma_m
-= 2\,10^{-4}$, $\Sigma_q = 1\,10^{-4}$. Cependant on peut remarquer une oscillation moyenne de $q$
+couplage vers une valeur autre que sa valeur initiale : $m = -3\cdot10^{-5}$, $q=0.61$, avec $\Sigma_m
+= 2\cdot10^{-4}$, $\Sigma_q = 1\cdot10^{-4}$. Cependant on peut remarquer une oscillation moyenne de $q$
 notable autour de sa valeur moyenne, signe du fait qu'il y a à cette températures des fluctuations
-assez important (de l'ordre du pourcent). La forme du nuage de points de la figure
+assez important (de l'ordre du pour-cent). La forme du nuage de points de la figure
 \ref{fig:high_en_sca} nous permet de voir que $q$ est plus contraint que $m$ puisque le nuage est
 plus contracté verticalement qu'horizontalement, et c'est effectivement ce que nous disent les
-stastistiques : $\Sigma_q/ \Sigma_m \approx 2$. La magnétisation semble elle toujours non
+statistiques : $\Sigma_q/ \Sigma_m \approx 2$. La magnétisation semble elle toujours non
 contrainte, puisque $\Sigma_m$ reste le même qu'à température infinie, mais on observe aussi que les
 variations sont plus lentes, il y donc bien une certaine contrainte. 
 
@@ -659,72 +662,182 @@ variations sont plus lentes, il y donc bien une certaine contrainte.
     \centering
     \includegraphics[height=.25\textheight]{build/sca1_hksweep_huge_h20k22.png}
     \includegraphics[height=.25\textheight]{build/MQ_high_temp.png}
-    \caption{Scalaires une experience à température infinie $(h, k) = (0, 0)$ pour une grille de
-    $N=128$, avec prise en compte des $n=1$ plus proches voisins et une décroissance en $a=1$. On a
-    pour cette réalisation $\Sigma_m^\star = 1\,10^{-3},~ \Sigma_q^\star = 3\,10^{-4}$.}
+    \caption{Scalaires d'une expérience à haute température $(h, k) = (0, 1)$ pour une grille de
+    $N=128$, avec prise en compte des $n=1$ plus proches voisins et une décroissance en $a=1$.  On a
+    pour cette réalisation $\Sigma_m^\star = 1\cdot10^{-3},~ \Sigma_q^\star = 3\cdot10^{-4}$.}
     \label{fig:high_en_sca}
 \end{figure}
 
 
 La fonction d'auto-corrélation radiale nous montre qu'il y a un peu de corrélation : sur un ou deux
 points. Cependant, il ne s'agit toujours pas d'une forme exponentielle comme attendu, la
-décroissance semble en effet trop rapide, puisque la courbe reste concave même en échelle
+décroissance semble en effet trop rapide, puisque la courbe reste convexe même en échelle
 semi-logarithmique. 
 
 \begin{figure}
     \centering
     \includegraphics[height=.25\textheight]{build/lattice_9900000_hksweep_huge_h20k22.png}
     \includegraphics[height=.25\textheight]{build/corr_hksweep_huge_h20k22.png}
-    \caption{Grille finale et fonction d'auto-corrélation radiale, une experience à température
-    infinie $(h, k) = (0, 0)$ pour une grille de $N=128$, avec prise en compte des $n=1$ plus
+    \caption{Grille finale et fonction d'auto-corrélation radiale, une expérience à haute
+    température $(h, k) = (0, 1)$ pour une grille de $N=128$, avec prise en compte des $n=1$ plus
     proches voisins et une décroissance en $a=1$.} 
     \label{fig:high_en_corr}
 \end{figure}
 
 
-\subsubsection{Experience à basse température}
+\subsubsection{Expérience à basse température, sans polarité favorisée }
 
-On choisie arbitrairement $(h, k) = (0, 1)$ pour simuler une expérience à ``haute'' température sans
-polarité favorisée. Comme le montre la figure \ref{fig:high_en_sca}, on observe une convergence du
-couplage vers une valeur autre que sa valeur initiale : $m = -3\,10^{-5}$, $q=0.61$, avec $\Sigma_m
-= 2\,10^{-4}$, $\Sigma_q = 1\,10^{-4}$. Cependant on peut remarquer une oscillation moyenne de $q$
-notable autour de sa valeur moyenne, signe du fait qu'il y a à cette températures des fluctuations
-assez important (de l'ordre du pourcent). La forme du nuage de points de la figure
-\ref{fig:high_en_sca} nous permet de voir que $q$ est plus contraint que $m$ puisque le nuage est
-plus contracté verticalement qu'horizontalement, et c'est effectivement ce que nous disent les
-stastistiques : $\Sigma_q/ \Sigma_m \approx 2$. La magnétisation semble elle toujours non
-contrainte, puisque $\Sigma_m$ reste le même qu'à température infinie, mais on observe aussi que les
-variations sont plus lentes, il y donc bien une certaine contrainte. 
-
+On prend  $(h, k) = (0, 100)$ pour simuler cette expérience à basse température. La figure
+\ref{fig:low_temp_sca} présente les courbes pour les scalaires. On observe une magnétisation moyenne
+de $m = 3\cdot10^{-4}$ et un couplage de $q=0.995$ avec des erreurs statistiques de $\Sigma_m =
+4\cdot10^{-4}, ~ \Sigma_q = 9\cdot10^{-7}$. On remarque que le couplage est stabilisé et oscille
+très peu. La magnétisation, qui n'est elle toujours pas directement contrainte, semble toujours
+prendre des valeurs aléatoires, mais on remarque que ses variations sont très lentes. Cela se voit
+aussi très bien sur le graphe de droite ou on observe que les valeurs de $m$ prises par chaque
+expérience dépendent beaucoup des conditions initiales et qu'elles ne durent pas assez longtemps
+pour se recouvrir les unes les autres. 
 
 \begin{figure}
     \centering
-    \includegraphics[height=.25\textheight]{build/sca1_hksweep_huge_h20k22.png}
-    \includegraphics[height=.25\textheight]{build/MQ_high_temp.png}
-    \caption{Scalaires une experience à température infinie $(h, k) = (0, 0)$ pour une grille de
-    $N=128$, avec prise en compte des $n=1$ plus proches voisins et une décroissance en $a=1$. On a
-    pour cette réalisation $\Sigma_m^\star = 1\,10^{-3},~ \Sigma_q^\star = 3\,10^{-4}$.}
-    \label{fig:high_en_sca}
+    \includegraphics[height=.25\textheight]{build/sca1_low_temp.png}
+    \includegraphics[height=.25\textheight]{build/MQ_low_temp.png}
+    \caption{Scalaires pour une expérience à basse température $(h, k) = (0, 100)$ pour une
+    grille de $N=128$, avec prise en compte des $n=1$ plus proches voisins et une décroissance en
+    $a=1$. On a pour cette réalisation $\Sigma_m^\star = 1\,10^{-3},~ \Sigma_q^\star = 3\,10^{-4}$.}
+    \label{fig:low_en_sca}
 \end{figure}
 
-
-La fonction d'auto-corrélation radiale nous montre qu'il y a un peu de corrélation : sur un ou deux
-points. Cependant, il ne s'agit toujours pas d'une forme exponentielle comme attendu, la
-décroissance semble en effet trop rapide, puisque la courbe reste concave même en échelle
-semi-logarithmique. 
+Sur la figure \ref{fig:low_temp_corr}, on remarque directement sur la grille que les valeurs sont
+beaucoup plus uniformes qu'à haute température, et qu'elles sont relativement centrées autour de
+$\theta = \pi/2$, contrairement aux expériences à plus haute température où on pouvait voir des
+variations en amplitudes beaucoup plus grandes ainsi qu'une corrélation spatiale bien plus courte.
+En effet, on voit sur la courbe de droite que les points dans un rayon de 10 sont corrélés, bien que
+faiblement. La courbe semble cependant ne suivre ni loi exponentielle, ni loi affine inverse. Elle
+est toujours convexe, bien qu'on puisse obtenir une forme concave en prenant $k$ avec des valeurs
+encore plus grandes. 
 
 \begin{figure}
     \centering
-    \includegraphics[height=.25\textheight]{build/lattice_9900000_hksweep_huge_h20k22.png}
-    \includegraphics[height=.25\textheight]{build/corr_hksweep_huge_h20k22.png}
-    \caption{Grille finale et fonction d'auto-corrélation radiale, une experience à température
-    infinie $(h, k) = (0, 0)$ pour une grille de $N=128$, avec prise en compte des $n=1$ plus
-    proches voisins et une décroissance en $a=1$.} 
-    \label{fig:high_en_corr}
+    \includegraphics[height=.25\textheight]{build/lattice_9900000_low_temp.png}
+    \includegraphics[height=.25\textheight]{build/corr_low_temp.png}
+    \caption{Grille finale et fonction d'auto-corrélation radiale, pour une expérience à basse
+    température $(h, k) = (0, 100)$ pour une grille de $N=128$, avec prise en compte des
+    $n=1$ plus proches voisins et une décroissance en $a=1$.} 
+    \label{fig:low_en_corr}
+\end{figure}
+
+\subsection{Parcours de l'espace des configurations par les paramètres $h$ et $k$}
+
+Dans un premier temps, on peut se poser la question de l'influence d'un champ extérieur sur l'état
+stationnaire du système. Pour cela on se propose d'afficher les valeurs des scalaires $m,~q,~e$ a
+l'équilibre en fonction de $h$ (\emph{resp.} $k$) pour des isovaleurs du $k$ (\emph{resp.} $h$). Un
+tel graphe est présenté en figure \ref{fig:hksweeps}. On observe les comportement attendus,
+\emph{i.e.} on a une convergence continue plus ou moins forte vers une magnétisation du même signe
+de $h$. Réciproquement on observe un couplage qui tend vers $q=1$ quand $k$ va croissant, cependant
+la valeur minimale atteinte par $q$ est aux alentours de $-0.3$. On impute ce comportement aux fait
+que les diagonales sont considérés parmi les plus proches voisins. On remarque aussi que cette
+valeur est plus basse que celle donnée par la configuration du \texttt{CHECKERBOARD}, poussant à se
+demander quelle forme non triviale prend la grille pour minimiser cette valeur. La réponse est
+apportée dans la partie suivante.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=.9\textwidth]{build/hsweep_vs_k_hksweep_huge.png} \\
+    \includegraphics[width=.9\textwidth]{build/ksweep_vs_h_hksweep_huge.png}
+    \caption{Sweeps pour $k$ et $h$ en fonction de $h$ (\emph{resp.} $k$) pour des isovaleurs du $k$
+    (\emph{resp.} $h$). On a pris une grille de $N=128$, avec prise en compte des $n=1$ plus
+    proches voisins et une décroissance en $a=1$.}
+    \label{fig:hksweeps}
 \end{figure}
 
 
+On se propose maintenant de parcourir toute la surface des observables possibles par modifications
+des paramètres $h$ et $k$. La figure \ref{fig:hksweep_huge} montre le résultat d'une telle approche.
+On observe globalement une forme de l'ensemble des configurations similaire à ce qu'on peut trouver
+avec un modèle d'Ising. On remarque cependant que les états de très bas couplages ne sont pas
+accessibles, puisqu'on n'atteint un minimum au environs de $q=-0.3$. On remarque aussi des les états
+de fort couplage $q \approx 1$ avec des $m$ moyens sembles difficiles d'accès. En effet, il est
+impossible d'atteindre une configuration avec $q=1$ avec $\m \neq \pm 1$, mais la limite exacte
+n'est pas nette sur ce graphe. Si ils existent, il faudrait utiliser des valeurs de $h$ très faibles
+pour les atteindre, mais il faudrait alors aussi faire attention à bien être en présence de systèmes
+stabilisés et non en transition vers $m = \pm 1$. 
 
+On observe aussi que les îlots sont relativement séparés au milieux, et concentrés sur les bords.
+Cet effet peut avoir deux sources qui se combinent, soit on a sur-échantillonés les paramètres
+menant à ces états, soit la densité d'état est effectivement plus basse au centre du graphe. 
+
+Enfin on remarque que de nombreux nuages de points  ne sont pas complètement circulaires,  notamment
+vers $m=0, ~q=1$, ou aux extrémités. Cela nous pousse à penser que les systèmes qu'ils représentent
+ne sont pas totalement stabilisés. En effet, dans un souci de temps de calcul, les nuages de points
+présents sur ce graphe ne représentent qu'une expérience chacun, et non un millier comme on a pu le
+voir jusqu'à présent. Certains nuages de points souffrent donc d'une variation forte et lentes de
+$m$ ou $q$ dans des cas ou l'une des deux quantités est extrêmement contrainte et l'autre est
+``libre''. Utiliser des ensembles statistiques plutôt que des expériences uniques pour construire ce
+graphe aurait peut-être aussi changer le problème visuel de recouvrement des parties centrales du
+graphe mentionné dans le paragraphe précédent. 
+
+
+\begin{figure}  
+    \centering
+    \includegraphics[height=.3\textheight]{build/MQ_hksweep_huge.png}
+    \caption{Étalement des valeurs $m, q$ pour des valeurs de $-4 < h < $ et $-10 < k < 10$. On
+    prend une grille de $N=128$, avec prise en compte des $n=1$ plus proches voisins et une 
+    décroissance en $a=1$.}
+    \label{fig:hksweep_huge}
+\end{figure}
+
+\subsubsection{Cas paramagnétique}
+
+On prend  $(h, k) = (0, -100)$ pour simuler cette expérience à basse température dans un cas
+paramagnétique. L'analyse de cas n'est pas très pertinente puisque \cite{wiki:XY_model} précise
+qu'il n'a pas d'application, mais la grille qui en résulte est digne d'intérêt intéressante par la forme
+non triviale des structures qui apparaissent comme on peut le voir dans la figure
+\ref{fig:low_en_para_corr}. 
+
+\begin{figure}
+    \centering
+    \includegraphics[height=.3\textheight]{build/lattice_9900000_low_temp_para.png} 
+    \caption{Grille finale pour une expérience à basse température $(h, k) = (0, -100)$ dans un cas
+    paramagnétique, pour une grille de $N=128$, avec prise en compte des $n=1$ plus proches voisins
+    et une décroissance en $a=1$.} 
+    \label{fig:low_en_para_corr}
+\end{figure}
+
+\section{Conclusion et perspectives}
+
+Nous avons donc pu simuler dans ce projet pu simuler un grand nombre de configurations à l'équilibre
+pour le modèle XY, dont seuls quelques exemples sont présentés dans ce rapport. On a réussi à
+automatiser une large majorité des procédures, à garder un stockage cohérent permettant une analyse
+rapide et automatique des résultats produits.
+
+Le code principal, codé en C, a permis de faire des calculs sur des grilles relativement grandes en
+des temps tout à fait acceptables : on ne présente pas d'analyse de scalabilité dans ce rapport, mais
+on peut évoquer que le code permet de faire $10\,000\,000$\footnote{Il s'agit des valeurs
+utilisées dans ce rapport comme on peut le voir sur les graphes.} itérations sur une grille de
+$N=128$ en environ 30 secondes. 
+
+Cependant, bien que nous avons pu observer quelques comportements intéressants, nous n'avons pas pu
+accéder à la transition de phase, puisque la fonction d'auto-corrélation radiale calculée ne semble
+pas se comporter comme le prédit la théorie. On observe donc bien que la corrélation croît quand la
+température décroit, et qu'elle passe d'un comportement convexe à concave, mais elle ne semble
+jamais ressembler à un exponentielle ni ne jamais s'approcher d'une forme affine inverse. Il
+faudrait donc essayer de trouver d'autres paramètres d'ordre pour observer la transition de phase,
+ou bien remettre en cause les calculs faits dans ce travail. 
+
+Enfin, je n'ai pas pu aller aussi loin que prévu dans le projet, puisque j'aurais notamment aimé
+faire varier le nombre de plus proches voisins, la taille de la grille, le type de Monté Carlo,
+ainsi que le paramètre de décroissance spatiale qui semble est fondamental dans le modèle. Toute la
+machinerie est prête, mais je n'ai pas eu le temps d'analyser les données... J'aurais aussi aimé
+prendre le temps de mieux comprendre le calcul de l'erreur statistique sur une seule expérience. 
+
+Pour aller plus loin, il aurait été intéressant d'appliquer toutes les méthodes vues en cours, mais
+aussi par exemple de modifier le code pour que les valeurs d'angles attribuées soit discrétisées sur
+$\q \in \mathcal{N}$ valeurs et pouvoir ainsi observer l'apport du passage au continu. 
+
+De manière plus anecdotique, j'aurais aimé tenter d'automatiser l'initialisation les simulations en
+partant de points ``opposés'' dans l'espace des phases pour prouver qu'il ne s'agit pas d'un état
+méta-stable auquel on accède en partant du nuage de point resserré présenté dans la partie sur le
+simple sampling. 
 
 \bibliographystyle{alpha}
 \bibliography{rapport}
